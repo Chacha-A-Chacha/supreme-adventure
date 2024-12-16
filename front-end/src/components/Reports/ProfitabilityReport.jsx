@@ -1,4 +1,4 @@
-export const ProfitabilityReport = ({ data }) => {
+const ProfitabilityReport = ({ data }) => {
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm border border-gray-200">
       <h3 className="text-lg font-medium text-gray-900">Profitability Report</h3>
@@ -23,3 +23,6 @@ export const ProfitabilityReport = ({ data }) => {
     </div>
   );
 };
+
+
+export default ProfitabilityReport;
