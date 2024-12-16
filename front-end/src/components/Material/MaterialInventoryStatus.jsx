@@ -1,7 +1,13 @@
-import { useState } from 'react';
-import { Bar } from 'react-chartjs-2'; // Assuming Chart.js is installed for bar chart visualization
+import React, { useEffect, useRef } from 'react';
+import { Chart, CategoryScale } from 'chart.js';
+import 'chart.js/auto';
+
+Chart.register(CategoryScale);
 
 const MaterialInventoryStatus = ({ materials, lowStockThreshold }) => {
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+
   // Identify low stock and top-used materials
   const lowStockMaterials = materials.filter(
     (material) => material.stockLevel < lowStockThreshold
@@ -11,19 +17,46 @@ const MaterialInventoryStatus = ({ materials, lowStockThreshold }) => {
     .sort((a, b) => b.usage - a.usage)
     .slice(0, 5);
 
-  // Data for inventory overview bar chart
-  const inventoryData = {
-    labels: materials.map((material) => material.name),
-    datasets: [
-      {
-        label: 'Stock Levels',
-        data: materials.map((material) => material.stockLevel),
-        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1,
+  useEffect(() => {
+    const ctx = chartRef.current.getContext('2d');
+
+    // Destroy previous chart instance to prevent "Canvas is already in use" error
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    chartInstanceRef.current = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: materials.map((material) => material.name),
+        datasets: [
+          {
+            label: 'Stock Levels',
+            data: materials.map((material) => material.stockLevel),
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+          },
+        ],
       },
-    ],
-  };
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'category',
+          },
+        },
+      },
+    });
+
+    // Cleanup function to destroy chart instance
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
+    };
+  }, [materials]);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
@@ -59,7 +92,9 @@ const MaterialInventoryStatus = ({ materials, lowStockThreshold }) => {
       {/* Inventory Overview */}
       <div className="mt-8">
         <h3 className="text-sm font-semibold text-gray-700">Inventory Overview</h3>
-        <Bar data={inventoryData} options={{ responsive: true, maintainAspectRatio: false }} />
+        <div style={{ height: '300px' }}>
+          <canvas ref={chartRef}></canvas>
+        </div>
       </div>
     </div>
   );
