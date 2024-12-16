@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Outlet } from 'react-router-dom';
+
 import {
   Dialog,
   DialogBackdrop,
@@ -213,7 +215,10 @@ export default function Sidebar() {
           </div>
 
           <main>
-            <div className="py-6">{/* Content goes here */}</div>
+            <div className="py-6">
+              {/* Content goes here */}
+              <Outlet />
+              </div>
           </main>
         </div>
       </div>
