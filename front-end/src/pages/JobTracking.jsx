@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import Header from '../components/Shared/Header/Header.jsx';
 import JobStatusSummary from '../components/job/JobStatusSummary';
 import JobList from '../components/job/JobList';
