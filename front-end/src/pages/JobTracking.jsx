@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 import Header from '../components/Shared/Header/Header.jsx';
 import JobStatusSummary from '../components/job/JobStatusSummary';
 import JobList from '../components/job/JobList';
@@ -10,6 +12,8 @@ const jobs = [
 ];
 
 const JobTracking = () => {
+  const [selectedJobId, setSelectedJobId] = useState(null);
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <Header
@@ -20,12 +24,15 @@ const JobTracking = () => {
       <div className="mt-6">
         <JobStatusSummary jobs={jobs} />
       </div>
+
       <div className="mt-6">
-        <JobList jobs={jobs} />
+      <JobList jobs={jobs} onSelectJob={setSelectedJobId} />
       </div>
+
       <div className="mt-6">
-        <JobDetails jobId={1} /> {/* Placeholder for selected job */}
+      {selectedJobId && <JobDetails jobId={selectedJobId} jobs={jobs} />}      
       </div>
+      
     </div>
   );
 };

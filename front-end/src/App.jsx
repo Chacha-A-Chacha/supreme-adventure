@@ -3,6 +3,7 @@ import Sidebar from './components/Shared/Sidebar/Sidebar';
 import ErrorBoundary from './components/Shared/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import MaterialManagement from './pages/MaterialManagement';
+import MachineUsage from './pages/MachineUsage';
 import JobTracking from './pages/JobTracking';
 import Reports from './pages/Reports';
 
@@ -15,9 +16,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Sidebar />}>
               <Route index element={<Dashboard />} />
-              <Route path="/materials" element={<MaterialManagement />} />
-              <Route path="/jobs" element={<JobTracking />} />
-              <Route path="/reports" element={<Reports />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="materials" element={<MaterialManagement />} />
+              <Route path="jobs" element={<JobTracking />} />
+              <Route path="machine-usage" element={<MachineUsage />} />
+              <Route path="reports" element={<Reports />} />
             </Route>
           </Routes>
         </ErrorBoundary>
