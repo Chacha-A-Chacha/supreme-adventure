@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { fetchMaterials } from '../../store/slices/materialSlice';
 import { createJob } from '../../store/slices/jobSlice';
+import { getPaymentStatuses } from '../../services/jobService';
 
 const CreateJobForm = () => {
   const dispatch = useDispatch();
-  const { materials, status: materialsStatus } = useSelector((state) => state.materials);
+  const { materials } = useSelector((state) => state.materials);
   const [formData, setFormData] = useState({
     client_name: '',
     client_phone_number: '',
@@ -16,24 +17,30 @@ const CreateJobForm = () => {
     material_usages: [],
     expenses: [],
   });
-
   const [newMaterial, setNewMaterial] = useState({ material_id: '', usage_meters: '' });
   const [newExpense, setNewExpense] = useState({ name: '', cost: '', shared: false, job_ids: [] });
+  const [paymentStatuses, setPaymentStatuses] = useState([]);
 
   useEffect(() => {
-    if (materialsStatus === 'idle') {
-      dispatch(fetchMaterials());
-    }
-  }, [materialsStatus, dispatch]);
+    dispatch(fetchMaterials());
+    getPaymentStatuses()
+      .then(response => setPaymentStatuses(response.data.payment_statuses))
+      .catch(error => console.error('Error fetching payment statuses:', error));
+  }, [dispatch]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name.includes('timeframe')) {
-      const key = name.split('.')[1];
-      setFormData({ ...formData, timeframe: { ...formData.timeframe, [key]: value } });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleMaterialChange = (e) => {
+    const { name, value } = e.target;
+    setNewMaterial({ ...newMaterial, [name]: value });
+  };
+
+  const handleExpenseChange = (e) => {
+    const { name, value } = e.target;
+    setNewExpense({ ...newExpense, [name]: value });
   };
 
   const handleAddMaterial = () => {
@@ -94,7 +101,6 @@ const CreateJobForm = () => {
           <textarea
             name="description"
             id="description"
-            rows="3"
             value={formData.description}
             onChange={handleChange}
             className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
@@ -102,32 +108,45 @@ const CreateJobForm = () => {
           />
         </div>
         <div>
-          <label htmlFor="timeframe.start" className="block text-sm font-medium text-gray-900">Start Date</label>
+          <label htmlFor="progress_status" className="block text-sm font-medium text-gray-900">Progress Status</label>
+          <select
+            name="progress_status"
+            id="progress_status"
+            value={formData.progress_status}
+            onChange={handleChange}
+            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
+          >
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="start" className="block text-sm font-medium text-gray-900">Start Date</label>
           <input
             type="date"
-            name="timeframe.start"
-            id="timeframe.start"
+            name="start"
+            id="start"
             value={formData.timeframe.start}
-            onChange={handleChange}
+            onChange={(e) => setFormData({ ...formData, timeframe: { ...formData.timeframe, start: e.target.value } })}
             className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
           />
         </div>
         <div>
-          <label htmlFor="timeframe.end" className="block text-sm font-medium text-gray-900">End Date</label>
+          <label htmlFor="end" className="block text-sm font-medium text-gray-900">End Date</label>
           <input
             type="date"
-            name="timeframe.end"
-            id="timeframe.end"
+            name="end"
+            id="end"
             value={formData.timeframe.end}
-            onChange={handleChange}
+            onChange={(e) => setFormData({ ...formData, timeframe: { ...formData.timeframe, end: e.target.value } })}
             className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
           />
         </div>
         <div>
-          <label htmlFor="pricing_input" className="block text-sm font-medium text-gray-900">Base Pricing</label>
+          <label htmlFor="pricing_input" className="block text-sm font-medium text-gray-900">Pricing Input</label>
           <input
             type="number"
-            step="0.01"
             name="pricing_input"
             id="pricing_input"
             value={formData.pricing_input}
@@ -136,58 +155,58 @@ const CreateJobForm = () => {
           />
         </div>
       </div>
-
-      {/* Material Usage Section */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900">Materials Used</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
+      <div className="mt-6">
+        <h3 className="text-md font-medium text-gray-900">Material Usage</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor="material_id" className="block text-sm font-medium text-gray-900">Material</label>
             <select
               name="material_id"
               id="material_id"
               value={newMaterial.material_id}
-              onChange={(e) => setNewMaterial({ ...newMaterial, material_id: e.target.value })}
+              onChange={handleMaterialChange}
               className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
             >
               <option value="">Select Material</option>
               {materials.map((material) => (
-                <option key={material.id} value={material.id}>{material.name}</option>
+                <option key={material.id} value={material.id}>
+                  {material.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="usage_meters" className="block text-sm font-medium text-gray-900">Usage (meters)</label>
+            <label htmlFor="usage_meters" className="block text-sm font-medium text-gray-900">Usage Meters</label>
             <input
               type="number"
               name="usage_meters"
               id="usage_meters"
               value={newMaterial.usage_meters}
-              onChange={(e) => setNewMaterial({ ...newMaterial, usage_meters: e.target.value })}
+              onChange={handleMaterialChange}
               className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
             />
           </div>
+          <div className="sm:col-span-2">
+            <button
+              type="button"
+              onClick={handleAddMaterial}
+              className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Add Material
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={handleAddMaterial}
-          className="mt-4 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-        >
-          Add Material
-        </button>
-        <ul className="mt-4 space-y-2">
-          {formData.material_usages.map((usage, index) => (
-            <li key={index} className="text-sm text-gray-700">
-              Material ID: {usage.material_id}, Usage: {usage.usage_meters} meters
+        <ul className="mt-4">
+          {formData.material_usages.map((material, index) => (
+            <li key={index}>
+              Material ID: {material.material_id}, Usage Meters: {material.usage_meters}
             </li>
           ))}
         </ul>
       </div>
-
-      {/* Expenses Section */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900">Expenses</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-4">
+      <div className="mt-6">
+        <h3 className="text-md font-medium text-gray-900">Expenses</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor="expense_name" className="block text-sm font-medium text-gray-900">Expense Name</label>
             <input
@@ -195,19 +214,18 @@ const CreateJobForm = () => {
               name="name"
               id="expense_name"
               value={newExpense.name}
-              onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
+              onChange={handleExpenseChange}
               className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
             />
           </div>
           <div>
-            <label htmlFor="expense_cost" className="block text-sm font-medium text-gray-900">Cost</label>
+            <label htmlFor="expense_cost" className="block text-sm font-medium text-gray-900">Expense Cost</label>
             <input
               type="number"
-              step="0.01"
               name="cost"
               id="expense_cost"
               value={newExpense.cost}
-              onChange={(e) => setNewExpense({ ...newExpense, cost: e.target.value })}
+              onChange={handleExpenseChange}
               className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
             />
           </div>
@@ -219,30 +237,43 @@ const CreateJobForm = () => {
               id="shared"
               checked={newExpense.shared}
               onChange={(e) => setNewExpense({ ...newExpense, shared: e.target.checked })}
-              className="mt-2 block rounded-md border-gray-300 focus:outline-indigo-600"
+              className="mt-2 block"
             />
           </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="job_ids" className="block text-sm font-medium text-gray-900">Job IDs (if shared)</label>
+            <input
+              type="text"
+              name="job_ids"
+              id="job_ids"
+              value={newExpense.job_ids.join(', ')}
+              onChange={(e) => setNewExpense({ ...newExpense, job_ids: e.target.value.split(',').map(id => parseInt(id.trim())) })}
+              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
+              disabled={!newExpense.shared}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <button
+              type="button"
+              onClick={handleAddExpense}
+              className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Add Expense
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={handleAddExpense}
-          className="mt-4 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-        >
-          Add Expense
-        </button>
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4">
           {formData.expenses.map((expense, index) => (
-            <li key={index} className="text-sm text-gray-700">
-              {expense.name}: ${expense.cost} {expense.shared ? '(Shared)' : ''}
+            <li key={index}>
+              Name: {expense.name}, Cost: {expense.cost}, Shared: {expense.shared ? 'Yes' : 'No'}, Job IDs: {expense.job_ids.join(', ')}
             </li>
           ))}
         </ul>
       </div>
-
-      <div className="flex justify-end mt-6">
+      <div className="mt-6">
         <button
           type="submit"
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           Create Job
         </button>
