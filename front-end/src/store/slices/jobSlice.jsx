@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getJobs, createJob, updateJob, getJobById } from '../../services/jobService';
+import { getJobs, createJob as createJobService, updateJob, getJobById } from '../../services/jobService';
 
 // Async Thunk to fetch all jobs
 export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (_, { rejectWithValue }) => {
@@ -12,9 +12,9 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (_, { rejectWi
 });
 
 // Async Thunk to create a new job
-export const addJob = createAsyncThunk('jobs/addJob', async (newJob, { rejectWithValue }) => {
+export const createJob = createAsyncThunk('jobs/createJob', async (newJob, { rejectWithValue }) => {
   try {
-    const response = await createJob(newJob);
+    const response = await createJobService(newJob);
     return response.data;
   } catch (error) {
     return rejectWithValue(error.response ? error.response.data : 'Failed to create job');
@@ -63,13 +63,13 @@ const jobSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload || 'Failed to fetch jobs';
       })
-      .addCase(addJob.fulfilled, (state, action) => {
+      .addCase(createJob.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.jobs.push(action.payload);
       })
-      .addCase(addJob.rejected, (state, action) => {
+      .addCase(createJob.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload || 'Failed to add job';
+        state.error = action.payload || 'Failed to create job';
       })
       .addCase(editJob.pending, (state) => {
         state.status = 'loading';

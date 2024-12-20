@@ -6,6 +6,7 @@ import MaterialManagement from './pages/MaterialManagement';
 import MachineUsage from './pages/MachineUsage';
 import JobTracking from './pages/JobTracking';
 import Reports from './pages/Reports';
+import CreateJob from './pages/CreateJob';
 
 
 const App = () => (
@@ -21,6 +22,7 @@ const App = () => (
               <Route path="jobs" element={<JobTracking />} />
               <Route path="machine-usage" element={<MachineUsage />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="create-job" element={<CreateJob />} />
             </Route>
           </Routes>
         </ErrorBoundary>

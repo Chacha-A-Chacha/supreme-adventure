@@ -1,5 +1,6 @@
-
-import Header from '../components/Shared/Header/Header.jsx';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../components/Shared/Header/Header';
 import MaterialInventoryStatus from '../components/Material/MaterialInventoryStatus';
 
 const materials = [
@@ -10,18 +11,23 @@ const materials = [
   { id: 5, name: 'Adhesives', stockLevel: 80, usage: 90 },
 ];
 
-const actions = [
-  { title: 'Add Material', href: '#', icon: '➕', primary: true, onClick: () => alert('Add Material') },
-  { title: 'Create Job', href: '#', icon: '✍️', primary: true, onClick: () => alert('Create Job') },
-];
-
 const Dashboard = () => {
+  const navigate = useNavigate();
+
+  const handleCreateJob = () => {
+    navigate('/create-job');
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <Header
         title="Dashboard"
         breadcrumbs={[{ label: 'Home', href: '/', current: false }, { label: 'Dashboard', href: '#', current: true }]}
-        actions={actions}
+        actions={[{
+          label: 'Create Job',
+          primary: true,
+          onClick: handleCreateJob,
+        }]}
       />
 
       {/* Material Inventory Status */}
