@@ -1,59 +1,71 @@
-const JobList = ({ jobs, onSelectJob }) => {
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchJobs } from '../../store/slices/jobSlice';
+import { useNavigate } from 'react-router-dom';
+
+const JobList = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { jobs, status, error, currentPage, totalPages } = useSelector((state) => state.jobs);
+
+  useEffect(() => {
+    dispatch(fetchJobs({ page: currentPage, limit: 10 }));
+  }, [dispatch, currentPage]);
+
+  const handleViewDetails = (id) => {
+    navigate(`/jobs/${id}`);
+  };
+
+  const handlePageChange = (page) => {
+    dispatch(fetchJobs({ page, limit: 10 }));
+  };
+
   return (
-    <div className="rounded-lg bg-white shadow-sm border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900">Job List</h2>
+      {status === 'loading' && <p>Loading...</p>}
+      {status === 'failed' && <p>Error: {error}</p>}
+      {status === 'succeeded' && (
+        <>
+          <ul>
+            {jobs.map((job) => (
+              <li key={job.id} className="border-b py-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p>{job.description}</p>
+                    <p>Status: {job.progress_status}</p>
+                  </div>
+                  <button
+                    onClick={() => handleViewDetails(job.id)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-between mt-4">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-gray-300 rounded-md"
             >
-              Job ID
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              Previous
+            </button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-gray-300 rounded-md"
             >
-              Client
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Status
-            </th>
-            <th scope="col" className="relative px-6 py-3">
-              <span className="sr-only">View</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {jobs.map((job) => (
-            <tr key={job.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {job.id}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {job.client}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {job.status}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  onClick={() => onSelectJob(job.id)}
-                  className="text-indigo-600 hover:text-indigo-900"
-                >
-                  View
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              Next
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
-
 
 export default JobList;

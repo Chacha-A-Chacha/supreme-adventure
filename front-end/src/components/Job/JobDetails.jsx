@@ -1,32 +1,35 @@
-const JobDetails = ({ jobId, jobs }) => {
-  const job = jobs.find((j) => j.id === jobId);
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchJobById } from '../../store/slices/jobSlice';
+import { useParams } from 'react-router-dom';
 
-  if (!job) return <p className="text-sm text-gray-500">No job selected.</p>;
+const JobDetails = () => {
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const { job, status, error } = useSelector((state) => state.jobs);
+
+  useEffect(() => {
+    dispatch(fetchJobById(id));
+  }, [dispatch, id]);
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow-sm border border-gray-200">
-      <h3 className="text-lg font-medium text-gray-900">Job Details</h3>
-      <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h2 className="text-lg font-semibold text-gray-900">Job Details</h2>
+      {status === 'loading' && <p>Loading...</p>}
+      {status === 'failed' && <p>Error: {error}</p>}
+      {status === 'succeeded' && job && (
         <div>
-          <dt className="text-sm font-medium text-gray-500">Job ID</dt>
-          <dd className="mt-1 text-sm text-gray-900">{job.id}</dd>
+          <p>Description: {job.description}</p>
+          <p>Status: {job.progress_status}</p>
+          <p>Start Date: {job.start_date}</p>
+          <p>End Date: {job.end_date}</p>
+          <p>Total Cost: {job.total_cost}</p>
+          <p>Payment Status: {job.payment_status}</p>
+          {/* Add more job details as needed */}
         </div>
-        <div>
-          <dt className="text-sm font-medium text-gray-500">Client</dt>
-          <dd className="mt-1 text-sm text-gray-900">{job.client}</dd>
-        </div>
-        <div>
-          <dt className="text-sm font-medium text-gray-500">Status</dt>
-          <dd className="mt-1 text-sm text-gray-900">{job.status}</dd>
-        </div>
-        <div>
-          <dt className="text-sm font-medium text-gray-500">Progress</dt>
-          <dd className="mt-1 text-sm text-gray-900">{job.progress}%</dd>
-        </div>
-      </dl>
+      )}
     </div>
   );
 };
-
 
 export default JobDetails;
