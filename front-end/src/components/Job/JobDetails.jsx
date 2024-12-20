@@ -1,16 +1,14 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchJobById } from '../../store/slices/jobSlice';
-import { useParams } from 'react-router-dom';
 
-const JobDetails = () => {
-  const { id } = useParams();
+const JobDetails = ({ jobId }) => {
   const dispatch = useDispatch();
   const { job, status, error } = useSelector((state) => state.jobs);
 
   useEffect(() => {
-    dispatch(fetchJobById(id));
-  }, [dispatch, id]);
+    dispatch(fetchJobById(jobId));
+  }, [dispatch, jobId]);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
