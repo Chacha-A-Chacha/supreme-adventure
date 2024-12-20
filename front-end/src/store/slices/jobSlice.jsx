@@ -104,4 +104,3 @@ const jobSlice = createSlice({
 });
 
 export default jobSlice.reducer;
-export { createJob, fetchJobs, editJob, fetchJobById };

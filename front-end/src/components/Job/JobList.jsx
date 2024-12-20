@@ -23,7 +23,7 @@ const JobList = ({ onSelectJob }) => {
       <h2 className="text-lg font-semibold text-gray-900">Job List</h2>
       {status === 'loading' && <p>Loading...</p>}
       {status === 'failed' && <p>Error: {error}</p>}
-      {status === 'succeeded' && (
+      {status === 'succeeded' && jobs && (
         <>
           <ul>
             {jobs.map((job) => (
