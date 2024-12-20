@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getJobs, createJob as createJobService, updateJob, getJobById } from '../../services/jobService';
 
-// Async Thunk to fetch all jobs
-export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (_, { rejectWithValue }) => {
-  try {
-    const response = await getJobs();
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response ? error.response.data : 'Something went wrong');
-  }
+// Async Thunk to fetch all jobs with pagination
+export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async ({ page, limit }, { rejectWithValue }) => {
+    try {
+      const response = await getJobs(page, limit);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response ? error.response.data : 'Something went wrong');
+    }
 });
 
 // Async Thunk to create a new job
