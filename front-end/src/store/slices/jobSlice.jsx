@@ -3,12 +3,12 @@ import { getJobs, createJob as createJobService, updateJob, getJobById } from '.
 
 // Async Thunk to fetch all jobs with pagination
 export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async ({ page, limit }, { rejectWithValue }) => {
-    try {
-      const response = await getJobs(page, limit);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response ? error.response.data : 'Something went wrong');
-    }
+  try {
+    const response = await getJobs(page, limit);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.response ? error.response.data : 'Something went wrong');
+  }
 });
 
 // Async Thunk to create a new job
@@ -48,6 +48,8 @@ const jobSlice = createSlice({
     job: null,
     status: 'idle',
     error: null,
+    currentPage: 1,
+    totalPages: 1,
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -102,3 +104,4 @@ const jobSlice = createSlice({
 });
 
 export default jobSlice.reducer;
+export { createJob, fetchJobs, editJob, fetchJobById };

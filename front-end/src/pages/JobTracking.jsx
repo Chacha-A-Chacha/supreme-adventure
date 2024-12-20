@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
 import Header from '../components/Shared/Header/Header.jsx';
-import JobStatusSummary from '../components/job/JobStatusSummary';
-import JobList from '../components/job/JobList';
-import JobDetails from '../components/job/JobDetails';
-
-const jobs = [
-  { id: 1, client: 'Client A', status: 'Ongoing', progress: 50 },
-  { id: 2, client: 'Client B', status: 'Completed', progress: 100 },
-  { id: 3, client: 'Client C', status: 'Pending', progress: 0 },
-];
+import JobStatusSummary from '../components/Job/JobStatusSummary';
+import JobList from '../components/Job/JobList';
+import JobDetails from '../components/Job/JobDetails';
 
 const JobTracking = () => {
   const [selectedJobId, setSelectedJobId] = useState(null);
@@ -21,17 +15,16 @@ const JobTracking = () => {
         actions={[{ title: 'Add Job', href: '#', icon: '✍️', onClick: () => alert('Add Job') }]}
       />
       <div className="mt-6">
-        <JobStatusSummary jobs={jobs} />
+        <JobStatusSummary />
       </div>
 
       <div className="mt-6">
-      <JobList jobs={jobs} onSelectJob={setSelectedJobId} />
+        <JobList onSelectJob={setSelectedJobId} />
       </div>
 
       <div className="mt-6">
-      {selectedJobId && <JobDetails jobId={selectedJobId} jobs={jobs} />}      
+        {selectedJobId && <JobDetails jobId={selectedJobId} />}
       </div>
-      
     </div>
   );
 };

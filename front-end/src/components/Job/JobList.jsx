@@ -1,11 +1,9 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchJobs } from '../../store/slices/jobSlice';
-import { useNavigate } from 'react-router-dom';
 
 const JobList = ({ onSelectJob }) => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { jobs, status, error, currentPage, totalPages } = useSelector((state) => state.jobs);
 
   useEffect(() => {
