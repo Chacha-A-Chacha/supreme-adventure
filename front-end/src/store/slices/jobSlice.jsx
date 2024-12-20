@@ -57,7 +57,9 @@ const jobSlice = createSlice({
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.jobs = action.payload;
+        state.jobs = action.payload.jobs;
+        state.currentPage = action.payload.currentPage;
+        state.totalPages = action.payload.totalPages;
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.status = 'failed';
