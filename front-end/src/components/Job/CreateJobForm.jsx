@@ -1,284 +1,487 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchMaterials } from '../../store/slices/materialSlice';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { createJob } from '../../store/slices/jobSlice';
-import { getPaymentStatuses } from '../../services/jobService';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle
+} from '@/components/ui/alert';
+import { AlertCircle, Plus, Trash } from 'lucide-react';
+
+const initialFormState = {
+  client_name: '',
+  client_phone_number: '',
+  description: '',
+  job_type: 'in_house',
+  vendor_name: '',
+  vendor_cost_per_unit: '',
+  total_units: '',
+  pricing_per_unit: '',
+  pricing_input: '',
+  use_unit_pricing: true,
+  timeframe: {
+    start: '',
+    end: ''
+  },
+  expenses: []
+};
 
 const CreateJobForm = () => {
+  const [formData, setFormData] = useState(initialFormState);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
   const dispatch = useDispatch();
-  const { materials } = useSelector((state) => state.materials);
-  const [formData, setFormData] = useState({
-    client_name: '',
-    client_phone_number: '',
-    description: '',
-    progress_status: 'pending',
-    timeframe: { start: '', end: '' },
-    pricing_input: '',
-    material_usages: [],
-    expenses: [],
-  });
-  const [newMaterial, setNewMaterial] = useState({ material_id: '', usage_meters: '' });
-  const [newExpense, setNewExpense] = useState({ name: '', cost: '', shared: false, job_ids: [] });
-  const [paymentStatuses, setPaymentStatuses] = useState([]);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    dispatch(fetchMaterials());
-    getPaymentStatuses()
-      .then(response => setPaymentStatuses(response.data.payment_statuses))
-      .catch(error => console.error('Error fetching payment statuses:', error));
-  }, [dispatch]);
+  const validateForm = () => {
+    const newErrors = {};
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    // Required fields validation
+    if (!formData.client_name.trim()) {
+      newErrors.client_name = 'Client name is required';
+    }
+
+    if (!formData.client_phone_number.trim()) {
+      newErrors.client_phone_number = 'Phone number is required';
+    } else if (!/^\+?[\d\s-]{10,}$/.test(formData.client_phone_number)) {
+      newErrors.client_phone_number = 'Invalid phone number format';
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    }
+
+    if (!formData.timeframe.start) {
+      newErrors.start_date = 'Start date is required';
+    }
+
+    if (!formData.timeframe.end) {
+      newErrors.end_date = 'End date is required';
+    }
+
+    // Validate pricing
+    if (formData.use_unit_pricing) {
+      if (formData.job_type === 'outsourced') {
+        if (!formData.vendor_name.trim()) {
+          newErrors.vendor_name = 'Vendor name is required';
+        }
+        if (!formData.vendor_cost_per_unit || formData.vendor_cost_per_unit <= 0) {
+          newErrors.vendor_cost_per_unit = 'Valid vendor cost is required';
+        }
+        if (!formData.total_units || formData.total_units <= 0) {
+          newErrors.total_units = 'Valid total units is required';
+        }
+        if (!formData.pricing_per_unit || formData.pricing_per_unit <= 0) {
+          newErrors.pricing_per_unit = 'Valid pricing per unit is required';
+        }
+      }
+    } else {
+      if (!formData.pricing_input || formData.pricing_input <= 0) {
+        newErrors.pricing_input = 'Base pricing is required';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleMaterialChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewMaterial({ ...newMaterial, [name]: value });
-  };
-
-  const handleExpenseChange = (e) => {
-    const { name, value } = e.target;
-    setNewExpense({ ...newExpense, [name]: value });
-  };
-
-  const handleAddMaterial = () => {
-    if (newMaterial.material_id && newMaterial.usage_meters) {
-      setFormData({
-        ...formData,
-        material_usages: [...formData.material_usages, newMaterial],
-      });
-      setNewMaterial({ material_id: '', usage_meters: '' });
+    if (name.includes('timeframe.')) {
+      const timeframeField = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        timeframe: {
+          ...prev.timeframe,
+          [timeframeField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
 
-  const handleAddExpense = () => {
-    if (newExpense.name && newExpense.cost) {
-      setFormData({
-        ...formData,
-        expenses: [...formData.expenses, newExpense],
-      });
-      setNewExpense({ name: '', cost: '', shared: false, job_ids: [] });
-    }
+  const handleExpenseChange = (index, field, value) => {
+    const updatedExpenses = [...formData.expenses];
+    updatedExpenses[index] = {
+      ...updatedExpenses[index],
+      [field]: value
+    };
+    setFormData(prev => ({
+      ...prev,
+      expenses: updatedExpenses
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const addExpense = () => {
+    setFormData(prev => ({
+      ...prev,
+      expenses: [...prev.expenses, { name: '', cost: '', shared: false }]
+    }));
+  };
+
+  const removeExpense = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      expenses: prev.expenses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(createJob(formData));
+    setSubmitError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const jobData = {
+        ...formData,
+        expenses: formData.expenses.filter(exp => exp.name && exp.cost),
+        // If using unit pricing, set pricing_input to 0
+        pricing_input: formData.use_unit_pricing ? 0 : parseFloat(formData.pricing_input),
+        // If not using unit pricing, clear unit-related fields
+        ...((!formData.use_unit_pricing || formData.job_type === 'in_house') && {
+          vendor_cost_per_unit: 0,
+          total_units: 0,
+          pricing_per_unit: 0
+        })
+      };
+
+      // Remove the use_unit_pricing field as it's not needed in the API
+      delete jobData.use_unit_pricing;
+
+      await dispatch(createJob(jobData)).unwrap();
+      navigate('/jobs');
+    } catch (error) {
+      setSubmitError(error.message || 'Failed to create job');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-white rounded-md shadow-md">
-      <h2 className="text-lg font-semibold text-gray-900">Create New Job</h2>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="client_name" className="block text-sm font-medium text-gray-900">Client Name</label>
-          <input
-            type="text"
-            name="client_name"
-            id="client_name"
-            value={formData.client_name}
-            onChange={handleChange}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="client_phone_number" className="block text-sm font-medium text-gray-900">Client Phone Number</label>
-          <input
-            type="text"
-            name="client_phone_number"
-            id="client_phone_number"
-            value={formData.client_phone_number}
-            onChange={handleChange}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            required
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-900">Job Description</label>
-          <textarea
-            name="description"
-            id="description"
-            value={formData.description}
-            onChange={handleChange}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="progress_status" className="block text-sm font-medium text-gray-900">Progress Status</label>
-          <select
-            name="progress_status"
-            id="progress_status"
-            value={formData.progress_status}
-            onChange={handleChange}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-          >
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="start" className="block text-sm font-medium text-gray-900">Start Date</label>
-          <input
-            type="date"
-            name="start"
-            id="start"
-            value={formData.timeframe.start}
-            onChange={(e) => setFormData({ ...formData, timeframe: { ...formData.timeframe, start: e.target.value } })}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-          />
-        </div>
-        <div>
-          <label htmlFor="end" className="block text-sm font-medium text-gray-900">End Date</label>
-          <input
-            type="date"
-            name="end"
-            id="end"
-            value={formData.timeframe.end}
-            onChange={(e) => setFormData({ ...formData, timeframe: { ...formData.timeframe, end: e.target.value } })}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-          />
-        </div>
-        <div>
-          <label htmlFor="pricing_input" className="block text-sm font-medium text-gray-900">Pricing Input</label>
-          <input
-            type="number"
-            name="pricing_input"
-            id="pricing_input"
-            value={formData.pricing_input}
-            onChange={handleChange}
-            className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-          />
-        </div>
-      </div>
-      <div className="mt-6">
-        <h3 className="text-md font-medium text-gray-900">Material Usage</h3>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="material_id" className="block text-sm font-medium text-gray-900">Material</label>
-            <select
-              name="material_id"
-              id="material_id"
-              value={newMaterial.material_id}
-              onChange={handleMaterialChange}
-              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            >
-              <option value="">Select Material</option>
-              {materials.map((material) => (
-                <option key={material.id} value={material.id}>
-                  {material.name}
-                </option>
-              ))}
-            </select>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Create New Job</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Client Information */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="client_name">Client Name</Label>
+              <Input
+                id="client_name"
+                name="client_name"
+                value={formData.client_name}
+                onChange={handleInputChange}
+                className={errors.client_name ? 'border-red-500' : ''}
+              />
+              {errors.client_name && (
+                <p className="text-sm text-red-500">{errors.client_name}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="client_phone_number">Phone Number</Label>
+              <Input
+                id="client_phone_number"
+                name="client_phone_number"
+                value={formData.client_phone_number}
+                onChange={handleInputChange}
+                className={errors.client_phone_number ? 'border-red-500' : ''}
+              />
+              {errors.client_phone_number && (
+                <p className="text-sm text-red-500">{errors.client_phone_number}</p>
+              )}
+            </div>
           </div>
-          <div>
-            <label htmlFor="usage_meters" className="block text-sm font-medium text-gray-900">Usage Meters</label>
-            <input
-              type="number"
-              name="usage_meters"
-              id="usage_meters"
-              value={newMaterial.usage_meters}
-              onChange={handleMaterialChange}
-              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            />
+
+          {/* Job Details */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                className={`w-full p-2 border rounded-md ${
+                  errors.description ? 'border-red-500' : 'border-gray-300'
+                }`}
+                rows={4}
+              />
+              {errors.description && (
+                <p className="text-sm text-red-500">{errors.description}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="job_type">Job Type</Label>
+              <Select
+                name="job_type"
+                value={formData.job_type}
+                onValueChange={(value) =>
+                  handleInputChange({ target: { name: 'job_type', value } })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select job type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_house">In-House</SelectItem>
+                  <SelectItem value="outsourced">Outsourced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Pricing Type Selection */}
+            <div>
+              <Label htmlFor="pricing_type">Pricing Method</Label>
+              <Select
+                value={formData.use_unit_pricing.toString()}
+                onValueChange={(value) =>
+                  handleInputChange({
+                    target: {
+                      name: 'use_unit_pricing',
+                      value: value === 'true'
+                    }
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select pricing method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Unit-based Pricing</SelectItem>
+                  <SelectItem value="false">Base Pricing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="sm:col-span-2">
-            <button
-              type="button"
-              onClick={handleAddMaterial}
-              className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Add Material
-            </button>
+
+          {/* Base Pricing Input */}
+          {!formData.use_unit_pricing && (
+            <div>
+              <Label htmlFor="pricing_input">Base Price</Label>
+              <Input
+                type="number"
+                id="pricing_input"
+                name="pricing_input"
+                value={formData.pricing_input}
+                onChange={handleInputChange}
+                min="0"
+                step="0.01"
+                className={errors.pricing_input ? 'border-red-500' : ''}
+              />
+              {errors.pricing_input && (
+                <p className="text-sm text-red-500">{errors.pricing_input}</p>
+              )}
+            </div>
+          )}
+
+          {/* Outsourced Job Fields */}
+          {formData.job_type === 'outsourced' && formData.use_unit_pricing && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="vendor_name">Vendor Name</Label>
+                <Input
+                  id="vendor_name"
+                  name="vendor_name"
+                  value={formData.vendor_name}
+                  onChange={handleInputChange}
+                  className={errors.vendor_name ? 'border-red-500' : ''}
+                />
+                {errors.vendor_name && (
+                  <p className="text-sm text-red-500">{errors.vendor_name}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="vendor_cost_per_unit">Vendor Cost Per Unit</Label>
+                  <Input
+                    type="number"
+                    id="vendor_cost_per_unit"
+                    name="vendor_cost_per_unit"
+                    value={formData.vendor_cost_per_unit}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    className={errors.vendor_cost_per_unit ? 'border-red-500' : ''}
+                  />
+                  {errors.vendor_cost_per_unit && (
+                    <p className="text-sm text-red-500">{errors.vendor_cost_per_unit}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="pricing_per_unit">Pricing Per Unit</Label>
+                  <Input
+                    type="number"
+                    id="pricing_per_unit"
+                    name="pricing_per_unit"
+                    value={formData.pricing_per_unit}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    className={errors.pricing_per_unit ? 'border-red-500' : ''}
+                  />
+                  {errors.pricing_per_unit && (
+                    <p className="text-sm text-red-500">{errors.pricing_per_unit}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="total_units">Total Units</Label>
+                  <Input
+                    type="number"
+                    id="total_units"
+                    name="total_units"
+                    value={formData.total_units}
+                    onChange={handleInputChange}
+                    min="1"
+                    className={errors.total_units ? 'border-red-500' : ''}
+                  />
+                  {errors.total_units && (
+                    <p className="text-sm text-red-500">{errors.total_units}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Timeframe */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="timeframe.start">Start Date</Label>
+              <Input
+                type="date"
+                id="timeframe.start"
+                name="timeframe.start"
+                value={formData.timeframe.start}
+                onChange={handleInputChange}
+                className={errors.start_date ? 'border-red-500' : ''}
+              />
+              {errors.start_date && (
+                <p className="text-sm text-red-500">{errors.start_date}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="timeframe.end">End Date</Label>
+              <Input
+                type="date"
+                id="timeframe.end"
+                name="timeframe.end"
+                value={formData.timeframe.end}
+                onChange={handleInputChange}
+                className={errors.end_date ? 'border-red-500' : ''}
+              />
+              {errors.end_date && (
+                <p className="text-sm text-red-500">{errors.end_date}</p>
+              )}
+            </div>
           </div>
-        </div>
-        <ul className="mt-4">
-          {formData.material_usages.map((material, index) => (
-            <li key={index}>
-              Material ID: {material.material_id}, Usage Meters: {material.usage_meters}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="mt-6">
-        <h3 className="text-md font-medium text-gray-900">Expenses</h3>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="expense_name" className="block text-sm font-medium text-gray-900">Expense Name</label>
-            <input
-              type="text"
-              name="name"
-              id="expense_name"
-              value={newExpense.name}
-              onChange={handleExpenseChange}
-              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            />
+
+          {/* Expenses */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Expenses (Optional)</Label>
+              <Button
+                type="button"
+                onClick={addExpense}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Expense
+              </Button>
+            </div>
+
+            {formData.expenses.map((expense, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <Input
+                  placeholder="Expense name"
+                  value={expense.name}
+                  onChange={(e) => handleExpenseChange(index, 'name', e.target.value)}
+                />
+                <Input
+                  type="number"
+                  placeholder="Cost"
+                  value={expense.cost}
+                  onChange={(e) => handleExpenseChange(index, 'cost', e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+                <Button
+                  type="button"
+                  onClick={() => removeExpense(index)}
+                  variant="destructive"
+                  size="icon"
+                >
+                  <Trash className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
           </div>
-          <div>
-            <label htmlFor="expense_cost" className="block text-sm font-medium text-gray-900">Expense Cost</label>
-            <input
-              type="number"
-              name="cost"
-              id="expense_cost"
-              value={newExpense.cost}
-              onChange={handleExpenseChange}
-              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div>
-            <label htmlFor="shared" className="block text-sm font-medium text-gray-900">Shared</label>
-            <input
-              type="checkbox"
-              name="shared"
-              id="shared"
-              checked={newExpense.shared}
-              onChange={(e) => setNewExpense({ ...newExpense, shared: e.target.checked })}
-              className="mt-2 block"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="job_ids" className="block text-sm font-medium text-gray-900">Job IDs (if shared)</label>
-            <input
-              type="text"
-              name="job_ids"
-              id="job_ids"
-              value={newExpense.job_ids.join(', ')}
-              onChange={(e) => setNewExpense({ ...newExpense, job_ids: e.target.value.split(',').map(id => parseInt(id.trim())) })}
-              className="mt-2 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-indigo-600"
-              disabled={!newExpense.shared}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <button
-              type="button"
-              onClick={handleAddExpense}
-              className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Add Expense
-            </button>
-          </div>
-        </div>
-        <ul className="mt-4">
-          {formData.expenses.map((expense, index) => (
-            <li key={index}>
-              Name: {expense.name}, Cost: {expense.cost}, Shared: {expense.shared ? 'Yes' : 'No'}, Job IDs: {expense.job_ids.join(', ')}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="mt-6">
-        <button
-          type="submit"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+
+          {/* Error Message */}
+          {submitError && (
+            <Alert variant="destructive">
+              <AlertCircle className="w-4 h-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+        </form>
+      </CardContent>
+
+      <CardFooter className="flex justify-end space-x-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => navigate('/jobs')}
+          disabled={isSubmitting}
         >
-          Create Job
-        </button>
-      </div>
-    </form>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Creating...' : 'Create Job'}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

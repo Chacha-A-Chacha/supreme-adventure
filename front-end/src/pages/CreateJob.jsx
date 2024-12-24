@@ -1,6 +1,6 @@
 import React from 'react';
 import Header from '../components/Shared/Header/Header';
-import CreateJobForm from '../components/Job/CreateJobForm';
+import JobCreateForm from '../components/Job/CreateJobForm';
 
 const CreateJob = () => {
   return (
@@ -10,7 +10,7 @@ const CreateJob = () => {
         breadcrumbs={[{ label: 'Home', href: '/', current: false }, { label: 'Create Job', href: '#', current: true }]}
       />
       <div className="mt-6">
-        <CreateJobForm />
+        < JobCreateForm />
       </div>
     </div>
   );

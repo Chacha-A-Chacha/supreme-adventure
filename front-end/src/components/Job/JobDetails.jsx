@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchJobById } from '../../store/slices/jobSlice';
+import { fetchJobDetails } from '../../store/slices/jobSlice';
 
 const JobDetails = ({ jobId }) => {
   const dispatch = useDispatch();
   const { job, status, error } = useSelector((state) => state.jobs);
 
   useEffect(() => {
-    dispatch(fetchJobById(jobId));
+    dispatch(fetchJobDetails(jobId));
   }, [dispatch, jobId]);
 
   return (
