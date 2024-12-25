@@ -33,9 +33,20 @@ const initialState = {
 // Async Thunks
 export const fetchJobs = createAsyncThunk(
   'jobs/fetchJobs',
-  async ({ page = 1, limit = JOBS_PER_PAGE }, { rejectWithValue }) => {
+  async ({ page = 1, limit = JOBS_PER_PAGE, ...filters }, { rejectWithValue }) => {
     try {
-      const response = await JobService.getJobs({ page, limit });
+      const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
+        if (value && value !== 'all' && value !== '') {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      const response = await JobService.getJobs({ page, limit, ...cleanFilters });
+
+      // Log the actual API call parameters
+      console.log('API call parameters:', { page, limit, ...cleanFilters });
+
       return {
         jobs: response.jobs,
         pagination: {
@@ -162,20 +173,18 @@ const jobsSlice = createSlice({
         state.loadingStates.fetchJobs = 'succeeded';
         state.pagination = action.payload.pagination;
         
-        // Normalize jobs data
-        const newEntities = {};
-        const newIds = [];
-         // Handle both array and nested data structures
-        const jobs = Array.isArray(action.payload) ? action.payload : 
-        action.payload.jobs || [];
-
-        jobs.forEach(job => {
-          newEntities[job.id] = {
-            ...job,
-            lastFetched: Date.now()
-          };
-          newIds.push(job.id);
-        });
+       // Normalize jobs data
+       const newEntities = {};
+       const newIds = [];
+       if (action.payload.jobs) {
+         action.payload.jobs.forEach(job => {
+           newEntities[job.id] = {
+             ...job,
+             lastFetched: Date.now()
+           };
+           newIds.push(job.id);
+         });
+       }
         
         state.entities = newEntities;
         state.ids = newIds;

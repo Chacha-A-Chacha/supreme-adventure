@@ -102,6 +102,7 @@ class JobService {
       console.log('Fetching jobs with params:', params); // Debug log
 
       const response = await axiosInstance.get(this.endpoints.jobs, { params });
+      return response;
     } 
     catch (error) {
       console.error('Detailed Job Fetch Error:', {
