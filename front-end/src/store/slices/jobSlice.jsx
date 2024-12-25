@@ -161,13 +161,16 @@ const jobsSlice = createSlice({
         // Normalize jobs data
         const newEntities = {};
         const newIds = [];
-        action.payload.jobs.forEach(job => {
-          newEntities[job.id] = {
-            ...job,
-            lastFetched: Date.now()
-          };
-          newIds.push(job.id);
-        });
+        if (action.payload.jobs) {
+          
+          action.payload.jobs.forEach(job => {
+            newEntities[job.id] = {
+              ...job,
+              lastFetched: Date.now()
+            };
+            newIds.push(job.id);
+          });
+        }
         
         state.entities = newEntities;
         state.ids = newIds;
@@ -286,22 +289,60 @@ export const {
 } = jobsSlice.actions;
 
 // Selectors
-export const selectAllJobs = (state) => Object.values(state.jobs.entities);
-export const selectJobById = (state, jobId) => state.jobs.entities[jobId];
-export const selectCurrentJob = (state) => state.jobs.currentJob;
-export const selectJobsLoadingState = (state) => state.jobs.loadingStates;
-export const selectJobsErrors = (state) => state.jobs.errors;
-export const selectJobsPagination = (state) => state.jobs.pagination;
+const selectJobsState = state => state.jobs;
 
-// Memoized Selectors
+export const selectJobIds = state => state.jobs.ids;
+export const selectJobEntities = state => state.jobs.entities;
+
+// Memoized selectors using createSelector
+export const selectAllJobs = createSelector(
+  [selectJobEntities, selectJobIds],
+  (entities, ids) => ids.map(id => entities[id])
+);
+
+export const selectJobById = createSelector(
+  [selectJobEntities, (state, jobId) => jobId],
+  (entities, jobId) => entities[jobId]
+);
+
+export const selectCurrentJob = createSelector(
+  [selectJobsState],
+  jobs => jobs.currentJob
+);
+
+export const selectJobsLoadingState = createSelector(
+  [selectJobsState],
+  jobs => jobs.loadingStates
+);
+
+export const selectJobsErrors = createSelector(
+  [selectJobsState],
+  jobs => jobs.errors
+);
+
+export const selectJobsPagination = createSelector(
+  [selectJobsState],
+  jobs => jobs.pagination
+);
+
+// Memoized filtered jobs selector with composable filters
 export const selectFilteredJobs = createSelector(
-  [selectAllJobs, (_, filters) => filters],
+  [
+    selectAllJobs,
+    (state, filters) => filters
+  ],
   (jobs, filters) => {
     if (!filters) return jobs;
     
     return jobs.filter(job => {
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
+        if (key === 'startDate') {
+          return new Date(job.created_at) >= new Date(value);
+        }
+        if (key === 'endDate') {
+          return new Date(job.created_at) <= new Date(value);
+        }
         return job[key] === value;
       });
     });

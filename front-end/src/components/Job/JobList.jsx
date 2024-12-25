@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchJobs, selectAllJobs, selectJobsPagination, selectJobsLoadingState } from '../../store/slices/jobSlice';
+import { 
+  fetchJobs, 
+  selectFilteredJobs,
+  selectJobsPagination, 
+  selectJobsLoadingState 
+} from '../../store/slices/jobSlice';
 import { format } from 'date-fns';
 import {
   Card,
@@ -30,7 +35,6 @@ import { Loader2 } from 'lucide-react';
 
 const JobsList = () => {
   const dispatch = useDispatch();
-  const jobs = useSelector(selectAllJobs);
   const pagination = useSelector(selectJobsPagination);
   const loadingState = useSelector(selectJobsLoadingState);
   
@@ -41,32 +45,37 @@ const JobsList = () => {
     endDate: ''
   });
 
+  // Use memoized filtered jobs selector
+  const filteredJobs = useSelector(state => selectFilteredJobs(state, filters));
+
   useEffect(() => {
     dispatch(fetchJobs({ page: pagination.currentPage }));
   }, [dispatch, pagination.currentPage]);
 
-  const handleFilterChange = (key, value) => {
+  // Memoize handler functions
+  const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
-  const getStatusColor = (status) => {
+  // Memoize status color mapping
+  const getStatusColor = useMemo(() => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       in_progress: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+    return (status) => colors[status] || 'bg-gray-100 text-gray-800';
+  }, []);
 
-  const filteredJobs = jobs.filter(job => {
-    return (
-      (!filters.jobType || job.job_type === filters.jobType) &&
-      (!filters.progressStatus || job.progress_status === filters.progressStatus) &&
-      (!filters.startDate || new Date(job.created_at) >= new Date(filters.startDate)) &&
-      (!filters.endDate || new Date(job.created_at) <= new Date(filters.endDate))
-    );
-  });
+  // Memoize pagination handlers
+  const handlePreviousPage = useCallback(() => {
+    dispatch(fetchJobs({ page: pagination.currentPage - 1 }));
+  }, [dispatch, pagination.currentPage]);
+
+  const handleNextPage = useCallback(() => {
+    dispatch(fetchJobs({ page: pagination.currentPage + 1 }));
+  }, [dispatch, pagination.currentPage]);
 
   return (
     <Card className="w-full">
@@ -81,7 +90,7 @@ const JobsList = () => {
               <SelectValue placeholder="Job Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
+              <SelectItem value="...">All Types</SelectItem>
               <SelectItem value="in_house">In-House</SelectItem>
               <SelectItem value="outsourced">Outsourced</SelectItem>
             </SelectContent>
@@ -95,7 +104,7 @@ const JobsList = () => {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="...">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
@@ -162,24 +171,20 @@ const JobsList = () => {
 
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-500">
-                Showing {filteredJobs.length} of {jobs.length} jobs
+                Showing {filteredJobs.length} of {pagination.totalItems} jobs
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   disabled={pagination.currentPage === 1}
-                  onClick={() => 
-                    dispatch(fetchJobs({ page: pagination.currentPage - 1 }))
-                  }
+                  onClick={handlePreviousPage}
                 >
                   Previous
                 </Button>
                 <Button
                   variant="outline"
                   disabled={pagination.currentPage === pagination.totalPages}
-                  onClick={() => 
-                    dispatch(fetchJobs({ page: pagination.currentPage + 1 }))
-                  }
+                  onClick={handleNextPage}
                 >
                   Next
                 </Button>
