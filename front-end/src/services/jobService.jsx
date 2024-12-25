@@ -70,7 +70,7 @@ const retryConfig = {
 
 class JobService {
   static endpoints = {
-    jobs: '/in-house/jobs',
+    jobs: '/print/jobs/summary',
     newJob: '/print/jobs',
     jobDetails: (id) => `/print/jobs/${id}`,
     materials: (id) => `/print/jobs/${id}/materials`,
@@ -91,11 +91,8 @@ class JobService {
   static async getJobs(params = {}) {
     try {
       const response = await axiosInstance.get(this.endpoints.jobs, { params });
-      console.log(response.data);
-      return response.data;
     } 
     catch (error) {
-      console.log(error);
       return Promise.reject(handleApiError(error));
     }
   }

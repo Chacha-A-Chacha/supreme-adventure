@@ -46,7 +46,11 @@ export const fetchJobs = createAsyncThunk(
         }
       };
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data.message || 'Failed to fetch jobs',
+        status: error.response?.status,
+        data: error.response?.data
+      });
     }
   }
 );
@@ -161,16 +165,17 @@ const jobsSlice = createSlice({
         // Normalize jobs data
         const newEntities = {};
         const newIds = [];
-        if (action.payload.jobs) {
-          
-          action.payload.jobs.forEach(job => {
-            newEntities[job.id] = {
-              ...job,
-              lastFetched: Date.now()
-            };
-            newIds.push(job.id);
-          });
-        }
+         // Handle both array and nested data structures
+        const jobs = Array.isArray(action.payload) ? action.payload : 
+        action.payload.jobs || [];
+
+        jobs.forEach(job => {
+          newEntities[job.id] = {
+            ...job,
+            lastFetched: Date.now()
+          };
+          newIds.push(job.id);
+        });
         
         state.entities = newEntities;
         state.ids = newIds;

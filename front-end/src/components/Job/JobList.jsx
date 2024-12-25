@@ -39,8 +39,8 @@ const JobsList = () => {
   const loadingState = useSelector(selectJobsLoadingState);
   
   const [filters, setFilters] = useState({
-    jobType: '',
-    progressStatus: '',
+    jobType: 'all',
+    progressStatus: 'all',
     startDate: '',
     endDate: ''
   });
@@ -49,8 +49,9 @@ const JobsList = () => {
   const filteredJobs = useSelector(state => selectFilteredJobs(state, filters));
 
   useEffect(() => {
-    dispatch(fetchJobs({ page: pagination.currentPage }));
-  }, [dispatch, pagination.currentPage]);
+    dispatch(fetchJobs({ page: pagination.currentPage, ...filters }));
+  }, [dispatch, pagination.currentPage, filters]);
+
 
   // Memoize handler functions
   const handleFilterChange = useCallback((key, value) => {
@@ -90,7 +91,7 @@ const JobsList = () => {
               <SelectValue placeholder="Job Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="...">All Types</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="in_house">In-House</SelectItem>
               <SelectItem value="outsourced">Outsourced</SelectItem>
             </SelectContent>
@@ -104,7 +105,7 @@ const JobsList = () => {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="...">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
@@ -196,5 +197,27 @@ const JobsList = () => {
     </Card>
   );
 };
+
+// Update the selector to handle 'all' values
+export const selectFilteredJobs = createSelector(
+  [selectAllJobs, (state, filters) => filters],
+  (jobs, filters) => {
+    if (!filters) return jobs;
+    
+    return jobs.filter(job => {
+      return Object.entries(filters).every(([key, value]) => {
+        if (value === 'all') return true;
+        if (!value) return true;
+        if (key === 'startDate') {
+          return new Date(job.created_at) >= new Date(value);
+        }
+        if (key === 'endDate') {
+          return new Date(job.created_at) <= new Date(value);
+        }
+        return job[key] === value;
+      });
+    });
+  }
+);
 
 export default JobsList;
