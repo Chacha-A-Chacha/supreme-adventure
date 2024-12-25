@@ -78,6 +78,11 @@ const JobsList = () => {
     dispatch(fetchJobs({ page: pagination.currentPage + 1 }));
   }, [dispatch, pagination.currentPage]);
 
+  // In JobsList.js
+  const jobsError = useSelector(state => state.jobs.errors.fetchJobs);
+  const jobsErrorDetails = useSelector(state => state.jobs.errors.fetchJobsDetails);
+
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -130,10 +135,41 @@ const JobsList = () => {
 
       <CardContent>
         {loadingState.fetchJobs === 'loading' ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : jobsError ? (
+            <div className="p-4 border border-red-200 rounded-md bg-red-50">
+              <h4 className="text-red-800 font-medium mb-2">Error Loading Jobs</h4>
+              <p className="text-red-600 mb-2">{jobsError}</p>
+              {jobsErrorDetails && (
+                <div className="text-sm text-red-500">
+                  <p>Status: {jobsErrorDetails.status}</p>
+                  <p>Endpoint: {jobsErrorDetails.endpoint}</p>
+                  <p>Method: {jobsErrorDetails.method}</p>
+                  {jobsErrorDetails.params && (
+                    <p>Parameters: {JSON.stringify(jobsErrorDetails.params)}</p>
+                  )}
+                </div>
+              )}
+              <Button 
+                variant="outline" 
+                className="mt-2"
+                onClick={() => {
+                  console.log('Retrying with params:', { 
+                    page: pagination.currentPage,
+                    ...filters 
+                  });
+                  dispatch(fetchJobs({ 
+                    page: pagination.currentPage,
+                    ...filters 
+                  }));
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : (
           <>
             <Table>
               <TableHeader>
@@ -192,6 +228,12 @@ const JobsList = () => {
               </div>
             </div>
           </>
+        )}
+
+        {jobsError && (
+          <div className="text-red-500 p-4">
+            Error loading jobs: {jobsError}
+          </div>
         )}
       </CardContent>
     </Card>

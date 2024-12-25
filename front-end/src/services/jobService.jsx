@@ -39,22 +39,31 @@ axiosInstance.interceptors.response.use(
 
 // Error handler
 const handleApiError = (error) => {
-  const errorMessage = error.response?.data?.error || 
-                      error.response?.data?.message || 
-                      error.message || 
-                      'An unexpected error occurred';
-  
-  // Log error for monitoring
-  console.error('API Error:', {
+  const errorDetails = {
+    message: error.response?.data?.error || 
+             error.response?.data?.message || 
+             error.message || 
+             'An unexpected error occurred',
+    status: error.response?.status,
     endpoint: error.config?.url,
     method: error.config?.method,
-    status: error.response?.status,
-    message: errorMessage
-  });
+    params: error.config?.params
+  };
+  
+  // Create a more detailed error message
+  const detailedMessage = [
+    `Error ${errorDetails.status || 'unknown'}:`,
+    errorDetails.message,
+    `Endpoint: ${errorDetails.endpoint || 'unknown'}`,
+    `Method: ${errorDetails.method || 'unknown'}`,
+    error.response?.data?.detail || ''
+  ].filter(Boolean).join(' | ');
 
+  console.error('API Error Details:', errorDetails);
+  
   return {
-    error: errorMessage,
-    status: error.response?.status
+    error: detailedMessage,
+    details: errorDetails
   };
 };
 
@@ -90,9 +99,20 @@ class JobService {
   // List of available jobs
   static async getJobs(params = {}) {
     try {
+      console.log('Fetching jobs with params:', params); // Debug log
+
       const response = await axiosInstance.get(this.endpoints.jobs, { params });
     } 
     catch (error) {
+      console.error('Detailed Job Fetch Error:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        params: error.config?.params,
+        headers: error.config?.headers
+      });
       return Promise.reject(handleApiError(error));
     }
   }

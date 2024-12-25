@@ -183,7 +183,16 @@ const jobsSlice = createSlice({
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loadingStates.fetchJobs = 'failed';
-        state.errors.fetchJobs = action.payload?.message || 'Failed to fetch jobs';
+        state.errors.fetchJobs = action.payload?.error || 
+                                action.error?.message || 
+                                'Failed to fetch jobs';
+        // Store detailed error info
+        state.errors.fetchJobsDetails = action.payload?.details || null;
+        console.error('Redux Error State:', {
+          error: state.errors.fetchJobs,
+          details: state.errors.fetchJobsDetails,
+          action: action
+        });
       })
 
       // Create Job
@@ -331,16 +340,15 @@ export const selectJobsPagination = createSelector(
 );
 
 // Memoized filtered jobs selector with composable filters
+// Update the selector to handle 'all' values
 export const selectFilteredJobs = createSelector(
-  [
-    selectAllJobs,
-    (state, filters) => filters
-  ],
+  [selectAllJobs, (state, filters) => filters],
   (jobs, filters) => {
     if (!filters) return jobs;
     
     return jobs.filter(job => {
       return Object.entries(filters).every(([key, value]) => {
+        if (value === 'all') return true;
         if (!value) return true;
         if (key === 'startDate') {
           return new Date(job.created_at) >= new Date(value);
