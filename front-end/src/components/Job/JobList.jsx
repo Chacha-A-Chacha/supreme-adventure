@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchJobs, selectAllJobs, selectJobsPagination, selectJobsLoadingState } from '../../store/slices/jobsSlice';
+import { fetchJobs, selectAllJobs, selectJobsPagination, selectJobsLoadingState } from '../../store/slices/jobSlice';
 import { format } from 'date-fns';
 import {
   Card,
