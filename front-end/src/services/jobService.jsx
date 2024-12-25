@@ -70,7 +70,7 @@ const retryConfig = {
 
 class JobService {
   static endpoints = {
-    jobs: '/print/jobs/summary',
+    jobs: '/in-house/jobs',
     newJob: '/print/jobs',
     jobDetails: (id) => `/print/jobs/${id}`,
     materials: (id) => `/print/jobs/${id}/materials`,
@@ -89,19 +89,19 @@ class JobService {
 
   // List of available jobs
   static async getJobs(params = {}) {
-    return axiosInstance.get(this.endpoints.jobs, {
-      params,
-      cache: this.cacheConfig.jobs
-    });
-  }
-
-  static async createJob(jobData) {
     try {
-      const response = await axiosInstance.post(this.endpoints.newJob, jobData);
+      const response = await axiosInstance.get(this.endpoints.jobs, { params });
+      console.log(response.data);
       return response.data;
     } catch (error) {
       return Promise.reject(handleApiError(error));
     }
+  }
+
+  static async createJob(jobData) {
+    const response = await axiosInstance.post(this.endpoints.newJob, jobData);
+    await this.invalidateJobsCache();
+    return response;
   }
 
   static async getJobDetails(jobId) {
