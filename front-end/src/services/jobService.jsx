@@ -71,12 +71,12 @@ const retryConfig = {
 class JobService {
   static endpoints = {
     jobs: '/in-house/jobs',
-    newJob: '/jobs',
-    jobDetails: (id) => `/jobs/${id}`,
-    materials: (id) => `/jobs/${id}/materials`,
-    expenses: (id) => `/jobs/${id}/expenses`,
-    progress: (id) => `/jobs/${id}/progress`,
-    timeframe: (id) => `/jobs/${id}/timeframe`,
+    newJob: '/print/jobs',
+    jobDetails: (id) => `/print/jobs/${id}`,
+    materials: (id) => `/print/jobs/${id}/materials`,
+    expenses: (id) => `/print/jobs/${id}/expenses`,
+    progress: (id) => `/print/jobs/${id}/progress`,
+    timeframe: (id) => `/print/jobs/${id}/timeframe`,
     paymentStatuses: '/in-house/job/payment_statuses'
   };
 
