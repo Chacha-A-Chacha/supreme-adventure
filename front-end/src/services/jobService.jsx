@@ -93,7 +93,9 @@ class JobService {
       const response = await axiosInstance.get(this.endpoints.jobs, { params });
       console.log(response.data);
       return response.data;
-    } catch (error) {
+    } 
+    catch (error) {
+      console.log(error);
       return Promise.reject(handleApiError(error));
     }
   }
