@@ -198,26 +198,4 @@ const JobsList = () => {
   );
 };
 
-// Update the selector to handle 'all' values
-export const selectFilteredJobs = createSelector(
-  [selectAllJobs, (state, filters) => filters],
-  (jobs, filters) => {
-    if (!filters) return jobs;
-    
-    return jobs.filter(job => {
-      return Object.entries(filters).every(([key, value]) => {
-        if (value === 'all') return true;
-        if (!value) return true;
-        if (key === 'startDate') {
-          return new Date(job.created_at) >= new Date(value);
-        }
-        if (key === 'endDate') {
-          return new Date(job.created_at) <= new Date(value);
-        }
-        return job[key] === value;
-      });
-    });
-  }
-);
-
 export default JobsList;
