@@ -217,6 +217,39 @@ const JobDetails = () => {
           </div>
         </CardContent>
       </Card>
+
+      // Add this new Card section to the JobDetails component
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Box className="h-5 w-5" />
+            Materials
+          </CardTitle>
+          <Dialog open={materialsModal} onOpenChange={setMaterialsModal}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Add Materials</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Job Materials</DialogTitle>
+              </DialogHeader>
+              <MaterialsForm jobId={jobId} onClose={() => setMaterialsModal(false)} />
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {job.materials?.map((material) => (
+              <div key={material.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium">Material #{material.material_id}</p>
+                  <p className="text-sm text-gray-500">Usage: {material.usage_meters} meters</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
