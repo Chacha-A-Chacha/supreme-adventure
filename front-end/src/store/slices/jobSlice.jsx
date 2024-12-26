@@ -293,6 +293,7 @@ const jobsSlice = createSlice({
           ...action.payload,
           lastFetched: Date.now()
         };
+        state.ids.push(job.id);  // Ensure the job is in the list
       })
       .addCase(fetchJobDetails.rejected, (state, action) => {
         state.loadingStates.fetchJobDetails = 'failed';
