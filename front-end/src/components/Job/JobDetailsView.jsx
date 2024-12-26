@@ -29,19 +29,17 @@ import {
   Box 
 } from 'lucide-react';
 
-// Import all form components from a forms directory
-import { 
-  ExpenseForm,
-  JobMaterialsForm,
-  ProgressForm,
-  TimeframeForm 
-} from '../../components/forms';
+// Import all form components
+import { JobExpenseForm } from './JobExpenseForm';
+import { JobMaterialsForm } from './JobMaterialsForm';
+import { JobProgressForm } from './JobProgressForm';
+import { JobTimeframeForm } from './JobTimeframeForm';
 
 // Modal configuration object
 const MODAL_CONFIGS = {
   expense: {
     title: 'Add New Expense',
-    Component: ExpenseForm,
+    Component: JobExpenseForm,
     icon: FileText
   },
   materials: {
@@ -51,12 +49,12 @@ const MODAL_CONFIGS = {
   },
   progress: {
     title: 'Update Job Progress',
-    Component: ProgressForm,
+    Component: JobProgressForm,
     icon: Clock
   },
   timeframe: {
     title: 'Update Job Timeline',
-    Component: TimeframeForm,
+    Component: JobTimeframeForm,
     icon: Calendar
   }
 };

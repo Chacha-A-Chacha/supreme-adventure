@@ -8,7 +8,7 @@ import { addJobMaterials } from '../../store/slices/jobSlice';
 import { fetchMaterials } from '../../store/slices/materialSlice';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-const MaterialsForm = ({ jobId, onClose }) => {
+const JobMaterialsForm = ({ jobId, onClose }) => {
   const dispatch = useDispatch();
   const materials = useSelector((state) => state.materials.items);
   const [formMaterials, setFormMaterials] = useState([
@@ -125,4 +125,4 @@ const MaterialsForm = ({ jobId, onClose }) => {
   );
 };
 
-export default MaterialsForm;
+export default JobMaterialsForm;
