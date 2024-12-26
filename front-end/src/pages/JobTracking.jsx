@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Shared/Header/Header.jsx';
 import JobStatusSummary from '../components/Job/JobStatusSummary';
 import JobList from '../components/Job/JobList';
-import JobDetails from '../components/Job/JobDetails';
+import JobDetailsView from '../components/Job/JobDetailsView';
 
 const JobTracking = () => {
   const [selectedJobId, setSelectedJobId] = useState(null);
@@ -33,7 +33,7 @@ const JobTracking = () => {
       </div>
 
       <div className="mt-6">
-        {selectedJobId && <JobDetails jobId={selectedJobId} />}
+        {selectedJobId && <JobDetailsView jobId={selectedJobId} />}
       </div>
     </div>
   );

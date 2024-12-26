@@ -99,21 +99,10 @@ class JobService {
   // List of available jobs
   static async getJobs(params = {}) {
     try {
-      console.log('Fetching jobs with params:', params); // Debug log
-
       const response = await axiosInstance.get(this.endpoints.jobs, { params });
       return response;
     } 
     catch (error) {
-      console.error('Detailed Job Fetch Error:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-        params: error.config?.params,
-        headers: error.config?.headers
-      });
       return Promise.reject(handleApiError(error));
     }
   }
@@ -124,6 +113,7 @@ class JobService {
     return response;
   }
 
+  // Get specific job details
   static async getJobDetails(jobId) {
     return axiosInstance.get(this.endpoints.jobDetails(jobId), {
       cache: this.cacheConfig.jobDetails
@@ -232,7 +222,7 @@ class JobService {
   }
 
   static validateJobData(data) {
-    const requiredFields = ['client_id', 'description'];
+    const requiredFields = ['client_name', 'client_phone_number', 'description'];
     const missingFields = requiredFields.filter(field => !data[field]);
     
     if (missingFields.length > 0) {

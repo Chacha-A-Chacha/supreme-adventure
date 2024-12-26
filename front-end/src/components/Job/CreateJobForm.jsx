@@ -443,6 +443,7 @@ const CreateJobForm = () => {
                   step="0.01"
                 />
                 <Button
+                  className="px-2"
                   type="button"
                   onClick={() => removeExpense(index)}
                   variant="destructive"

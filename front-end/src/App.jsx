@@ -7,6 +7,7 @@ import MachineUsage from './pages/MachineUsage';
 import JobTracking from './pages/JobTracking';
 import Reports from './pages/Reports';
 import CreateJob from './pages/CreateJob';
+import JobDetails from './pages/JobDetails';
 
 
 const App = () => (
@@ -20,6 +21,7 @@ const App = () => (
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="materials" element={<MaterialManagement />} />
               <Route path="jobs" element={<JobTracking />} />
+              <Route path="/jobs/:jobId/job-details" element={<JobDetails />} />
               <Route path="machine-usage" element={<MachineUsage />} />
               <Route path="reports" element={<Reports />} />
               <Route path="create-job" element={<CreateJob />} />
