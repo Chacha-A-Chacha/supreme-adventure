@@ -116,14 +116,22 @@ const JobDetails = () => {
           {title}
         </CardTitle>
         {modalType && (
-          <DialogTrigger asChild>
-            <Button 
-              variant="outline" 
-              onClick={() => handleModal(modalType, true)}
-            >
-              {`${modalType === 'materials' ? 'Add' : 'Update'} ${title}`}
-            </Button>
-          </DialogTrigger>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                onClick={() => handleModal(modalType, true)}
+              >
+                {`${modalType === 'materials' ? 'Add' : 'Update'} ${title}`}
+              </Button>
+            </DialogTrigger>
+            <FormModal
+              isOpen={modals[modalType]}
+              onClose={() => handleModal(modalType, false)}
+              type={modalType}
+              jobId={jobId}
+            />
+          </Dialog>
         )}
       </CardHeader>
       <CardContent>
