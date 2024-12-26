@@ -32,6 +32,7 @@ const JobDetails = () => {
   const [expenseModal, setExpenseModal] = useState(false);
   const [progressModal, setProgressModal] = useState(false);
   const [timeframeModal, setTimeframeModal] = useState(false);
+  const [materialsModal, setMaterialsModal] = useState(false);
 
   useEffect(() => {
     if (jobId) {
