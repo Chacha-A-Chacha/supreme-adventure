@@ -140,6 +140,29 @@ export const addJobExpenses = createAsyncThunk(
   }
 );
 
+export const updateJobProgress = createAsyncThunk(
+  'jobs/updateProgress',
+  async ({ jobId, progressData }, { rejectWithValue }) => {
+    try {
+      const response = await JobService.updateJobProgress(jobId, progressData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
+export const updateJobTimeframe = createAsyncThunk(
+  'jobs/updateTimeframe',
+  async ({ jobId, timeframeData }, { rejectWithValue }) => {
+    try {
+      const response = await JobService.updateJobTimeframe(jobId, timeframeData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
 
 // Slice
 const jobsSlice = createSlice({
@@ -172,7 +195,7 @@ const jobsSlice = createSlice({
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.loadingStates.fetchJobs = 'succeeded';
         state.pagination = action.payload.pagination;
-        
+ 
        // Normalize jobs data
        const newEntities = {};
        const newIds = [];
@@ -298,6 +321,30 @@ const jobsSlice = createSlice({
       .addCase(addJobExpenses.rejected, (state, action) => {
         state.loadingStates.addJobExpenses = 'failed';
         state.errors.addJobExpenses = action.payload?.message || 'Failed to add expenses';
+      })
+
+      // Update Job Progress
+      .addCase(updateJobProgress.fulfilled, (state, action) => {
+        state.entities[action.payload.id] = {
+          ...action.payload,
+          lastFetched: Date.now()
+        };
+      })
+      .addCase(updateJobProgress.rejected, (state, action) => {
+        state.loadingStates.updateJobProgress = 'failed';
+        state.errors.updateJobProgress = action.payload?.message || 'Failed to update progress';
+      })
+
+      // Update Job Timeframe
+      .addCase(updateJobTimeframe.fulfilled, (state, action) => {
+        state.entities[action.payload.id] = {
+          ...action.payload,
+          lastFetched: Date.now()
+        };
+      })
+      .addCase(updateJobTimeframe.rejected, (state, action) => {
+        state.loadingStates.updateJobTimeframe = 'failed';
+        state.errors.updateJobTimeframe = action.payload?.message || 'Failed to update timeframe';
       });
 
   }
