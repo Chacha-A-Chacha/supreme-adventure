@@ -4,10 +4,6 @@ import { useParams } from 'react-router-dom';
 import { 
   fetchJobDetails, 
   selectJobById,
-  updateJob, 
-  addJobExpenses, 
-  updateJobProgress,
-  updateJobTimeframe 
 } from '../../store/slices/jobSlice';
 import { 
   Card, 
@@ -23,16 +19,85 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Calendar, Clock, DollarSign, Briefcase, User, Phone, FileText } from 'lucide-react';
+import { 
+  Calendar, 
+  Clock, 
+  DollarSign, 
+  Briefcase, 
+  User, 
+  FileText,
+  Box 
+} from 'lucide-react';
+
+// Import all form components from a forms directory
+import { 
+  ExpenseForm,
+  JobMaterialsForm,
+  ProgressForm,
+  TimeframeForm 
+} from '../../components/forms';
+
+// Modal configuration object
+const MODAL_CONFIGS = {
+  expense: {
+    title: 'Add New Expense',
+    Component: ExpenseForm,
+    icon: FileText
+  },
+  materials: {
+    title: 'Add Job Materials',
+    Component: JobMaterialsForm,
+    icon: Box
+  },
+  progress: {
+    title: 'Update Job Progress',
+    Component: ProgressForm,
+    icon: Clock
+  },
+  timeframe: {
+    title: 'Update Job Timeline',
+    Component: TimeframeForm,
+    icon: Calendar
+  }
+};
+
+// Modal wrapper component
+const FormModal = ({ isOpen, onClose, type, jobId }) => {
+  const config = MODAL_CONFIGS[type];
+  const FormComponent = config.Component;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{config.title}</DialogTitle>
+        </DialogHeader>
+        <FormComponent jobId={jobId} onClose={onClose} />
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const JobDetails = () => {
   const { jobId } = useParams();
   const dispatch = useDispatch();
   const job = useSelector(state => selectJobById(state, parseInt(jobId)));
-  const [expenseModal, setExpenseModal] = useState(false);
-  const [progressModal, setProgressModal] = useState(false);
-  const [timeframeModal, setTimeframeModal] = useState(false);
-  const [materialsModal, setMaterialsModal] = useState(false);
+  
+  // Single state object for all modals
+  const [modals, setModals] = useState({
+    expense: false,
+    materials: false,
+    progress: false,
+    timeframe: false
+  });
+
+  // Single handler for all modals
+  const handleModal = (modalType, isOpen) => {
+    setModals(prev => ({
+      ...prev,
+      [modalType]: isOpen
+    }));
+  };
 
   useEffect(() => {
     if (jobId) {
@@ -44,213 +109,151 @@ const JobDetails = () => {
     return <div className="p-4">Loading...</div>;
   }
 
+  // Reusable card section component
+  const CardSection = ({ title, icon: Icon, children, modalType }) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        {modalType && (
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              onClick={() => handleModal(modalType, true)}
+            >
+              {`${modalType === 'materials' ? 'Add' : 'Update'} ${title}`}
+            </Button>
+          </DialogTrigger>
+        )}
+      </CardHeader>
+      <CardContent>
+        {children}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="p-6 space-y-6">
       {/* Client Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Client Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Name</p>
-              <p className="font-medium">{job.client?.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Phone</p>
-              <p className="font-medium">{job.client?.phone_number}</p>
-            </div>
+      <CardSection title="Client Information" icon={User}>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Name</p>
+            <p className="font-medium">{job.client?.name}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-sm text-gray-500">Phone</p>
+            <p className="font-medium">{job.client?.phone_number}</p>
+          </div>
+        </div>
+      </CardSection>
 
-      {/* Job Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            Job Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Type</p>
-              <p className="font-medium capitalize">{job.job_type}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="font-medium capitalize">{job.progress_status}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Description</p>
-              <p className="font-medium">{job.description}</p>
-            </div>
+      {/* Render modals */}
+      {Object.entries(modals).map(([type, isOpen]) => (
+        isOpen && (
+          <FormModal
+            key={type}
+            type={type}
+            isOpen={isOpen}
+            onClose={() => handleModal(type, false)}
+            jobId={jobId}
+          />
+        )
+      ))}
+
+      {/* Job Information */}
+      <CardSection title="Job Information" icon={Briefcase}>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Type</p>
+            <p className="font-medium capitalize">{job.job_type}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-sm text-gray-500">Status</p>
+            <p className="font-medium capitalize">{job.progress_status}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Description</p>
+            <p className="font-medium">{job.description}</p>
+          </div>
+        </div>
+      </CardSection>
 
       {/* Financial Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Financial Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Total Amount</p>
-              <p className="font-medium">${job.total_amount}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Amount Paid</p>
-              <p className="font-medium">${job.amount_paid}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Payment Status</p>
-              <p className="font-medium">{job.payment_status}</p>
-            </div>
+      <CardSection title="Financial Details" icon={DollarSign}>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Total Amount</p>
+            <p className="font-medium">${job.total_amount}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-sm text-gray-500">Amount Paid</p>
+            <p className="font-medium">${job.amount_paid}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Payment Status</p>
+            <p className="font-medium">{job.payment_status}</p>
+          </div>
+        </div>
+      </CardSection>
 
       {/* Expenses Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Expenses
-          </CardTitle>
-          <Dialog open={expenseModal} onOpenChange={setExpenseModal}>
-            <DialogTrigger asChild>
-              <Button variant="outline">Add Expense</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Expense</DialogTitle>
-              </DialogHeader>
-              <ExpenseForm jobId={jobId} onClose={() => setExpenseModal(false)} />
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {job.expenses?.map((expense) => (
-              <div key={expense.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{expense.name}</p>
-                  <p className="text-sm text-gray-500">{new Date(expense.date).toLocaleDateString()}</p>
-                </div>
-                <p className="font-medium">${expense.cost}</p>
+      <CardSection title="Expenses" icon={FileText} modalType="expense">
+        <div className="space-y-4">
+          {job.expenses?.map((expense) => (
+            <div key={expense.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium">{expense.name}</p>
+                <p className="text-sm text-gray-500">{new Date(expense.date).toLocaleDateString()}</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <p className="font-medium">${expense.cost}</p>
+            </div>
+          ))}
+        </div>
+      </CardSection>
 
       {/* Timeline */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Timeline
-          </CardTitle>
-          <Dialog open={timeframeModal} onOpenChange={setTimeframeModal}>
-            <DialogTrigger asChild>
-              <Button variant="outline">Update Timeline</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Job Timeline</DialogTitle>
-              </DialogHeader>
-              <TimeframeForm jobId={jobId} onClose={() => setTimeframeModal(false)} />
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Start Date</p>
-              <p className="font-medium">{new Date(job.start_date).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">End Date</p>
-              <p className="font-medium">{new Date(job.end_date).toLocaleDateString()}</p>
-            </div>
+      <CardSection title="Timeline" icon={Calendar} modalType="timeframe">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Start Date</p>
+            <p className="font-medium">{new Date(job.start_date).toLocaleDateString()}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-sm text-gray-500">End Date</p>
+            <p className="font-medium">{new Date(job.end_date).toLocaleDateString()}</p>
+          </div>
+        </div>
+      </CardSection>
 
       {/* Progress */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Progress
-          </CardTitle>
-          <Dialog open={progressModal} onOpenChange={setProgressModal}>
-            <DialogTrigger asChild>
-              <Button variant="outline">Update Progress</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Job Progress</DialogTitle>
-              </DialogHeader>
-              <ProgressForm jobId={jobId} onClose={() => setProgressModal(false)} />
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-500">Current Status</p>
-            <p className="font-medium capitalize">{job.progress_status}</p>
-            {job.completed_at && (
-              <p className="text-sm text-gray-500">
-                Completed on: {new Date(job.completed_at).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <CardSection title="Progress" icon={Clock} modalType="progress">
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500">Current Status</p>
+          <p className="font-medium capitalize">{job.progress_status}</p>
+          {job.completed_at && (
+            <p className="text-sm text-gray-500">
+              Completed on: {new Date(job.completed_at).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      </CardSection>
 
-      // Add this new Card section to the JobDetails component
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Box className="h-5 w-5" />
-            Materials
-          </CardTitle>
-          <Dialog open={materialsModal} onOpenChange={setMaterialsModal}>
-            <DialogTrigger asChild>
-              <Button variant="outline">Add Materials</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Job Materials</DialogTitle>
-              </DialogHeader>
-              <MaterialsForm jobId={jobId} onClose={() => setMaterialsModal(false)} />
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {job.materials?.map((material) => (
-              <div key={material.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">Material #{material.material_id}</p>
-                  <p className="text-sm text-gray-500">Usage: {material.usage_meters} meters</p>
-                </div>
+      {/* Materials */}
+      <CardSection title="Materials" icon={Box} modalType="materials">
+        <div className="space-y-4">
+          {job.materials?.map((material) => (
+            <div key={material.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium">Material #{material.material_id}</p>
+                <p className="text-sm text-gray-500">Usage: {material.usage_meters} meters</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          ))}
+        </div>
+      </CardSection>
     </div>
   );
 };
