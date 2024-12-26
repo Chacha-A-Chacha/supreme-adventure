@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   fetchJobs, 
@@ -74,6 +75,11 @@ const JobsList = () => {
     };
     return (status) => colors[status] || 'bg-gray-100 text-gray-800';
   }, []);
+
+  const navigate = useNavigate();
+  const handleViewJob = (jobId) => {
+    navigate(`/jobs/${jobId}/job-details`);
+  };
 
   // Memoize pagination handlers
   const handlePreviousPage = useCallback(() => {

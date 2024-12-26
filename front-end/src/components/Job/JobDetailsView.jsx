@@ -30,10 +30,10 @@ import {
 } from 'lucide-react';
 
 // Import all form components
-import { JobExpenseForm } from './JobExpenseForm';
-import { JobMaterialsForm } from './JobMaterialsForm';
-import { JobProgressForm } from './JobProgressForm';
-import { JobTimeframeForm } from './JobTimeframeForm';
+import JobExpenseForm from './JobExpenseForm';
+import JobMaterialsForm from './JobMaterialsForm';
+import JobProgressForm from './JobProgressForm';
+import JobTimeframeForm from './JobTimeframeForm';
 
 // Modal configuration object
 const MODAL_CONFIGS = {
