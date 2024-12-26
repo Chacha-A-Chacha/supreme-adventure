@@ -1,61 +1,79 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addJobMaterials } from '../../store/slices/jobSlice';
+import { fetchMaterials } from '../../store/slices/materialSlice';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const MaterialsForm = ({ jobId, onClose }) => {
   const dispatch = useDispatch();
-  const [materials, setMaterials] = useState([
+  const materials = useSelector((state) => state.materials.items);
+  const [formMaterials, setFormMaterials] = useState([
     { material_id: '', usage_meters: '' }
   ]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchMaterials());
+  }, [dispatch]);
 
   const handleAddMaterial = () => {
-    setMaterials([...materials, { material_id: '', usage_meters: '' }]);
+    setFormMaterials([...formMaterials, { material_id: '', usage_meters: '' }]);
   };
 
   const handleMaterialChange = (index, field, value) => {
-    const updatedMaterials = [...materials];
+    const updatedMaterials = [...formMaterials];
     updatedMaterials[index] = {
       ...updatedMaterials[index],
-      [field]: field === 'material_id' ? parseInt(value) : parseFloat(value)
+      [field]: field === 'material_id' ? value : parseFloat(value) || ''
     };
-    setMaterials(updatedMaterials);
+    setFormMaterials(updatedMaterials);
   };
 
   const handleRemoveMaterial = (index) => {
-    if (materials.length > 1) {
-      const updatedMaterials = materials.filter((_, i) => i !== index);
-      setMaterials(updatedMaterials);
+    if (formMaterials.length > 1) {
+      const updatedMaterials = formMaterials.filter((_, i) => i !== index);
+      setFormMaterials(updatedMaterials);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validMaterials = materials.filter(
+    const validMaterials = formMaterials.filter(
       m => m.material_id && m.usage_meters
     );
     
     if (validMaterials.length > 0) {
-      await dispatch(addJobMaterials({
-        jobId,
-        materials: validMaterials
-      }));
-      onClose();
+      try {
+        await dispatch(addJobMaterials({ jobId, materials: validMaterials }));
+        onClose();
+      } catch (err) {
+        setError('Failed to add materials. Please try again.');
+      }
+    } else {
+      setError('Please fill in all required fields.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {materials.map((material, index) => (
-        <div key={index} className="space-y-4 p-4 bg-gray-50 rounded-lg">
-          <div className="flex justify-between items-center">
-            <h4 className="text-sm font-medium">Material #{index + 1}</h4>
-            {materials.length > 1 && (
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      {formMaterials.map((material, index) => (
+        <div key={index} className="space-y-4 p-4 border rounded-lg">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Material #{index + 1}</h3>
+            {formMaterials.length > 1 && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructive"
                 size="sm"
                 onClick={() => handleRemoveMaterial(index)}
               >
@@ -63,22 +81,30 @@ export const MaterialsForm = ({ jobId, onClose }) => {
               </Button>
             )}
           </div>
-          
-          <div>
-            <Label htmlFor={`material-id-${index}`}>Material ID</Label>
-            <Input
-              id={`material-id-${index}`}
-              type="number"
-              value={material.material_id}
-              onChange={(e) => handleMaterialChange(index, 'material_id', e.target.value)}
-              required
-            />
+
+          <div className="space-y-2">
+            <Label htmlFor={`material-${index}`}>Material</Label>
+            <Select
+              value={material.material_id.toString()}
+              onValueChange={(value) => handleMaterialChange(index, 'material_id', value)}
+            >
+              <SelectTrigger id={`material-${index}`}>
+                <SelectValue placeholder="Select a material" />
+              </SelectTrigger>
+              <SelectContent>
+                {materials.map((mat) => (
+                  <SelectItem key={mat.id} value={mat.id.toString()}>
+                    {mat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
-          <div>
-            <Label htmlFor={`usage-meters-${index}`}>Usage (meters)</Label>
+
+          <div className="space-y-2">
+            <Label htmlFor={`usage-${index}`}>Usage Meters</Label>
             <Input
-              id={`usage-meters-${index}`}
+              id={`usage-${index}`}
               type="number"
               step="0.01"
               value={material.usage_meters}
@@ -88,22 +114,15 @@ export const MaterialsForm = ({ jobId, onClose }) => {
           </div>
         </div>
       ))}
-      
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={handleAddMaterial}
-      >
-        Add Another Material
-      </Button>
-      
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+
+      <div className="flex gap-4">
+        <Button type="button" variant="outline" onClick={handleAddMaterial}>
+          Add Material
         </Button>
-        <Button type="submit">Save Materials</Button>
+        <Button type="submit">Submit</Button>
       </div>
     </form>
   );
 };
+
+export default MaterialsForm;
