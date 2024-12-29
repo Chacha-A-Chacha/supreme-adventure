@@ -59,20 +59,14 @@ export const fetchJobs = createAsyncThunk(
   'jobs/fetchJobs',
   async ({ page = 1, limit = JOBS_PER_PAGE, ...filters }, { rejectWithValue }) => {
     try {
-      const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
-        if (value && value !== 'all' && value !== '') {
-          acc[key] = value;
-        }
-        return acc;
-      }, {});
-
-      const response = await JobService.getJobs({ page, limit, ...cleanFilters });
-
-      // Log the actual API call parameters
-      console.log('API call parameters:', { page, limit, ...cleanFilters });
-
+      const cleanedFilters = cleanFilters(filters);
+      const response = await JobService.getJobs({ page, limit, ...cleanedFilters });
+      
       return {
-        jobs: response.jobs,
+        jobs: response.jobs.map(job => ({
+          ...job,
+          lastFetched: Date.now()
+        })),
         pagination: {
           currentPage: page,
           totalPages: response.totalPages,
@@ -82,10 +76,15 @@ export const fetchJobs = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue({
-        message: error.response?.data.message || 'Failed to fetch jobs',
-        status: error.response?.status,
-        data: error.response?.data
+        message: error.response?.data?.message || 'Failed to fetch jobs',
+        status: error.response?.status
       });
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { jobs } = getState();
+      return jobs.loadingStates.fetchJobs !== 'loading';
     }
   }
 );
@@ -126,16 +125,27 @@ export const fetchJobDetails = createAsyncThunk(
   'jobs/fetchJobDetails',
   async (jobId, { rejectWithValue, getState }) => {
     try {
-      // Check cache first
       const job = getState().jobs.entities[jobId];
-      if (job && Date.now() - job.lastFetched < 5 * 60 * 1000) { // 5 minutes cache
+      const now = Date.now();
+      
+      if (job?.lastFetched && (now - job.lastFetched < CACHE_DURATION)) {
         return job;
       }
 
       const response = await JobService.getJobDetails(jobId);
-      return response;
+      return {
+        ...response,
+        lastFetched: now
+      };
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to fetch job details'
+      });
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      return getState().jobs.loadingStates.fetchJobDetails !== 'loading';
     }
   }
 );
