@@ -231,36 +231,12 @@ const jobsSlice = createSlice({
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.loadingStates.fetchJobs = 'succeeded';
         state.pagination = action.payload.pagination;
- 
-       // Normalize jobs data
-       const newEntities = {};
-       const newIds = [];
-       if (action.payload.jobs) {
-         action.payload.jobs.forEach(job => {
-           newEntities[job.id] = {
-             ...job,
-             lastFetched: Date.now()
-           };
-           newIds.push(job.id);
-         });
-       }
-        
-        state.entities = newEntities;
-        state.ids = newIds;
         state.lastUpdated = Date.now();
+        jobsAdapter.setAll(state, action.payload.jobs);
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loadingStates.fetchJobs = 'failed';
-        state.errors.fetchJobs = action.payload?.error || 
-                                action.error?.message || 
-                                'Failed to fetch jobs';
-        // Store detailed error info
-        state.errors.fetchJobsDetails = action.payload?.details || null;
-        console.error('Redux Error State:', {
-          error: state.errors.fetchJobs,
-          details: state.errors.fetchJobsDetails,
-          action: action
-        });
+        state.errors.fetchJobs = action.payload?.message || 'Failed to fetch jobs';
       })
 
       // Create Job
@@ -325,14 +301,11 @@ const jobsSlice = createSlice({
       .addCase(fetchJobDetails.fulfilled, (state, action) => {
         state.loadingStates.fetchJobDetails = 'succeeded';
         state.currentJob = action.payload;
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
-        };
+        jobsAdapter.upsertOne(state, action.payload);
       })
       .addCase(fetchJobDetails.rejected, (state, action) => {
         state.loadingStates.fetchJobDetails = 'failed';
-        state.errors.fetchJobDetails = action.payload?.message || 'Failed to fetch job details';
+        state.errors.fetchJobDetails = action.payload?.message;
       })
 
       // Add Job Materials

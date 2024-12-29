@@ -74,15 +74,9 @@ const JobDetailsView = ({ jobId }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
-
-    if (jobId && mounted) {
+    if (jobId) {
       dispatch(fetchJobDetails(jobId));
     }
-
-    return () => {
-      mounted = false;
-    };
   }, [jobId, dispatch]);
 
   const formattedJobData = useMemo(() => {
