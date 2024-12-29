@@ -1,34 +1,48 @@
-import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector, createEntityAdapter } from '@reduxjs/toolkit';
 import JobService from '../../services/jobService';
 
 // Constants
 const JOBS_PER_PAGE = 10;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Initial state
-const initialState = {
-  entities: {},          // Normalized jobs data
-  currentJob: null,      // Currently selected job
-  ids: [],              // Array of job IDs for order preservation
+// Create entity adapter for normalized state management
+const jobsAdapter = createEntityAdapter({
+  selectId: (job) => job.id,
+  sortComparer: (a, b) => b.created_at.localeCompare(a.created_at)
+});
+
+// Initial state with entity adapter
+const initialState = jobsAdapter.getInitialState({
+  currentJob: null,
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalItems: 0,   
+    totalItems: 0,
     itemsPerPage: JOBS_PER_PAGE
   },
   loadingStates: {
-    fetchJobs: 'idle',      // 'idle' | 'loading' | 'succeeded' | 'failed'
+    fetchJobs: 'idle',
     createJob: 'idle',
     updateJob: 'idle',
-    fetchJobDetails: 'idle'
+    fetchJobDetails: 'idle',
+    addJobMaterials: 'idle',
+    addJobExpenses: 'idle',
+    updateJobProgress: 'idle',
+    updateJobTimeframe: 'idle'
   },
   errors: {
     fetchJobs: null,
     createJob: null,
     updateJob: null,
-    fetchJobDetails: null
+    fetchJobDetails: null,
+    addJobMaterials: null,
+    addJobExpenses: null,
+    updateJobProgress: null,
+    updateJobTimeframe: null
   },
   lastUpdated: null
-};
+});
+
 
 // Helper function to clean filters
 const cleanFilters = (filters) => {
