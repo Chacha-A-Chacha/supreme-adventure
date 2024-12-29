@@ -386,7 +386,7 @@ const jobsSlice = createSlice({
   }
 });
 
-// Actions
+// Export actions
 export const {
   resetJobErrors,
   clearCurrentJob,
@@ -395,53 +395,48 @@ export const {
 } = jobsSlice.actions;
 
 // Selectors
-const selectJobsState = state => state.jobs;
+const jobsAdapterSelectors = jobsAdapter.getSelectors((state) => state.jobs);
 
-export const selectJobIds = state => state.jobs.ids;
-export const selectJobEntities = state => state.jobs.entities;
+// Basic selectors
+export const {
+  selectAll: selectAllJobs,
+  selectById: selectJobById,
+  selectIds: selectJobIds,
+  selectTotal: selectTotalJobs,
+  selectEntities: selectJobEntities
+} = jobsAdapterSelectors;
 
-// Memoized selectors using createSelector
-export const selectAllJobs = createSelector(
-  [selectJobEntities, selectJobIds],
-  (entities, ids) => ids.map(id => entities[id])
-);
-
-export const selectJobById = createSelector(
-  [selectJobEntities, (state, jobId) => jobId],
-  (entities, jobId) => entities[jobId]
-);
+// Memoized selectors
+export const selectJobsState = state => state.jobs;
 
 export const selectCurrentJob = createSelector(
   [selectJobsState],
-  jobs => jobs.currentJob
+  (jobs) => jobs.currentJob
 );
 
 export const selectJobsLoadingState = createSelector(
   [selectJobsState],
-  jobs => jobs.loadingStates
+  (jobs) => jobs.loadingStates
 );
 
 export const selectJobsErrors = createSelector(
   [selectJobsState],
-  jobs => jobs.errors
+  (jobs) => jobs.errors
 );
 
 export const selectJobsPagination = createSelector(
   [selectJobsState],
-  jobs => jobs.pagination
+  (jobs) => jobs.pagination
 );
 
-// Memoized filtered jobs selector with composable filters
-// Update the selector to handle 'all' values
 export const selectFilteredJobs = createSelector(
-  [selectAllJobs, (state, filters) => filters],
+  [selectAllJobs, (_, filters) => filters],
   (jobs, filters) => {
     if (!filters) return jobs;
     
     return jobs.filter(job => {
       return Object.entries(filters).every(([key, value]) => {
-        if (value === 'all') return true;
-        if (!value) return true;
+        if (!value || value === 'all') return true;
         if (key === 'startDate') {
           return new Date(job.created_at) >= new Date(value);
         }
