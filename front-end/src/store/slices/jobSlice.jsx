@@ -12,7 +12,7 @@ const initialState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalItems: 0,
+    totalItems: 0,   
     itemsPerPage: JOBS_PER_PAGE
   },
   loadingStates: {
@@ -28,6 +28,16 @@ const initialState = {
     fetchJobDetails: null
   },
   lastUpdated: null
+};
+
+// Helper function to clean filters
+const cleanFilters = (filters) => {
+  return Object.entries(filters).reduce((acc, [key, value]) => {
+    if (value && value !== 'all' && value !== '') {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
 };
 
 // Async Thunks
@@ -174,6 +184,8 @@ const jobsSlice = createSlice({
     },
     clearCurrentJob: (state) => {
       state.currentJob = null;
+      state.loadingStates.fetchJobDetails = 'idle';
+      state.errors.fetchJobDetails = null;
     },
     invalidateJobsCache: (state) => {
       state.lastUpdated = null;

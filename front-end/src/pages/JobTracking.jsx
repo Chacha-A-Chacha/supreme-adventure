@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { clearCurrentJob } from '../store/slices/jobSlice';
 import Header from '../components/Shared/Header/Header.jsx';
 import JobStatusSummary from '../components/Job/JobStatusSummary';
 import JobList from '../components/Job/JobList';
@@ -8,6 +10,13 @@ import JobDetailsView from '../components/Job/JobDetailsView';
 const JobTracking = () => {
   const [selectedJobId, setSelectedJobId] = useState(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+
+  const handleJobSelection = (jobId) => {
+    dispatch(clearCurrentJob());
+    setSelectedJobId(jobId);
+  }
 
   const handleCreateJob = () => {
     navigate('/create-job');

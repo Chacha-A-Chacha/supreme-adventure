@@ -1,13 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchJobDetails, selectJobById, selectJobsLoadingState } from '../store/slices/jobSlice';
 import Header from '../components/Shared/Header/Header';
-import JobDetails from '../components/Job/JobDetailsView';
+import JobDetailsView from '../components/Job/JobDetailsView';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const JobDetailsPage = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
+  const dispatch = useDispatch();
+  const job = useSelector(state => selectJobById(state, parseInt(jobId)));
+  const loadingStates = useSelector(selectJobsLoadingState);
+
+  useEffect(() => {
+    if (jobId) {
+      dispatch(fetchJobDetails(parseInt(jobId)));
+    }
+  }, [jobId, dispatch]);
 
   const handleBack = () => {
     navigate('/jobs');
@@ -34,6 +45,14 @@ const JobDetailsPage = () => {
     }
   ];
 
+  if (loadingStates.fetchJobDetails === 'loading') {
+    return <div>Loading...</div>;
+  }
+
+  if (!job) {
+    return <div>No job details available</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
@@ -56,7 +75,7 @@ const JobDetailsPage = () => {
 
         {/* Main Content */}
         <div className="rounded-lg bg-white shadow">
-          <JobDetails />
+          <JobDetailsView />
         </div>
       </div>
     </div>
