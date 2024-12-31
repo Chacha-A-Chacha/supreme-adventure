@@ -1,3 +1,6 @@
+// slices/jobSlice.jsx
+// Desc: Redux slice for managing job data
+
 import { createSlice, createAsyncThunk, createSelector, createEntityAdapter } from '@reduxjs/toolkit';
 import JobService from '../../services/jobService';
 

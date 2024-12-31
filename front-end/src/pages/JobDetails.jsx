@@ -1,3 +1,6 @@
+// pages/JobDetails.jsx
+// page for displaying the details of a job
+
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';

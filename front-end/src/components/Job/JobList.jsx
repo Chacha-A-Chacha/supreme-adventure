@@ -211,7 +211,7 @@ const JobsList = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(job.created_at), 'MMM dd, yyyy')}
+                      {format(new Date(job.created_at), 'MM dd, yyyy')}
                     </TableCell>
                     <TableCell>{job.payment_status}</TableCell>
                     <TableCell>

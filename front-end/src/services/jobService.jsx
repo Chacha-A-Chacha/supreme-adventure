@@ -1,3 +1,6 @@
+// services/jobService.jsx
+// Define a JobService class with methods to interact with the job API endpoints. The class uses axios-cache-interceptor to cache API responses and handle retries for failed requests. The class also includes methods to invalidate the cache for specific endpoints and batch update multiple jobs.
+
 import axios from 'axios';
 import { setupCache } from 'axios-cache-interceptor';
 import { API_BASE_URL } from '../config';
