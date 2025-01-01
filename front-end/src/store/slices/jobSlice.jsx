@@ -126,20 +126,10 @@ export const updateJob = createAsyncThunk(
 
 export const fetchJobDetails = createAsyncThunk(
   'jobs/fetchJobDetails',
-  async (jobId, { rejectWithValue, getState }) => {
+  async (jobId, { rejectWithValue }) => {
     try {
-      const job = getState().jobs.entities[jobId];
-      const now = Date.now();
-      
-      if (job?.lastFetched && (now - job.lastFetched < CACHE_DURATION)) {
-        return job;
-      }
-
       const response = await JobService.getJobDetails(jobId);
-      return {
-        ...response,
-        lastFetched: now
-      };
+      return response;
     } catch (error) {
       return rejectWithValue({
         message: error.response?.data?.message || 'Failed to fetch job details'

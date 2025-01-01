@@ -59,7 +59,6 @@ const JobsList = () => {
     dispatch(fetchJobs({ page: pagination.currentPage, ...filters }));
   }, [dispatch, pagination.currentPage, filters]);
 
-
   // Memoize handler functions
   const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -77,6 +76,7 @@ const JobsList = () => {
   }, []);
 
   const navigate = useNavigate();
+
   const handleViewJob = (jobId) => {
     navigate(`/jobs/${jobId}/job-details`);
   };
@@ -90,10 +90,8 @@ const JobsList = () => {
     dispatch(fetchJobs({ page: pagination.currentPage + 1 }));
   }, [dispatch, pagination.currentPage]);
 
-  // In JobsList.js
   const jobsError = useSelector(state => state.jobs.errors.fetchJobs);
   const jobsErrorDetails = useSelector(state => state.jobs.errors.fetchJobsDetails);
-
 
   return (
     <Card className="w-full">
