@@ -14,7 +14,7 @@ const JobExpenseForm = ({ jobId, onClose }) => {
       name: '', 
       cost: '', 
       shared: false, 
-      job_ids: '' // String for comma-separated input
+      job_ids: ''
     }
   ]);
   const [error, setError] = useState(null);
@@ -32,7 +32,6 @@ const JobExpenseForm = ({ jobId, onClose }) => {
     const updatedExpenses = [...expenses];
     
     if (field === 'shared' && !value) {
-      // Reset job_ids when shared is unchecked
       updatedExpenses[index] = {
         ...updatedExpenses[index],
         shared: value,
@@ -71,69 +70,121 @@ const JobExpenseForm = ({ jobId, onClose }) => {
 
   const parseJobIds = (jobIdsString) => {
     try {
-      const ids = jobIdsString
-        .split(',')
-        .map(id => {
-          const parsed = parseInt(id.trim());
-          if (isNaN(parsed) || parsed <= 0) {
-            throw new Error(`Invalid job ID: ${id}`);
-          }
-          return parsed;
-        })
-        .filter(id => id !== jobId); // Filter out current jobId
-        
-      if (ids.length === 0) {
-        throw new Error('No valid job IDs provided');
+      if (!jobIdsString.trim()) {
+        return [];
       }
       
-      return ids;
+      const idStrings = jobIdsString.split(',').map(id => id.trim());
+      const ids = idStrings.map(id => {
+        const parsed = parseInt(id);
+        if (isNaN(parsed) || parsed <= 0) {
+          throw new Error(`Invalid job ID: ${id}`);
+        }
+        return parsed;
+      });
+      
+      const filteredIds = ids.filter(id => id !== jobId);
+      
+      if (ids.length > 0 && filteredIds.length === 0) {
+        throw new Error('Cannot share expense with the same job');
+      }
+      
+      return filteredIds;
     } catch (error) {
-      setError(error.message);
-      return [];
+      throw new Error(`Job IDs error: ${error.message}`);
     }
+  };
+
+  const validatePayloadStructure = (payload) => {
+    // Check top-level structure
+    if (!payload.jobId || typeof payload.jobId !== 'number') {
+      throw new Error('Invalid jobId');
+    }
+    
+    if (!Array.isArray(payload.expenses) || payload.expenses.length === 0) {
+      throw new Error('Expenses must be a non-empty array');
+    }
+
+    // Check each expense object
+    payload.expenses.forEach((expense, index) => {
+      if (typeof expense.name !== 'string' || expense.name.trim() === '') {
+        throw new Error(`Expense #${index + 1}: Name must be a non-empty string`);
+      }
+      
+      if (typeof expense.cost !== 'number' || expense.cost <= 0) {
+        throw new Error(`Expense #${index + 1}: Cost must be a positive number`);
+      }
+      
+      if (typeof expense.shared !== 'boolean') {
+        throw new Error(`Expense #${index + 1}: Shared must be a boolean`);
+      }
+      
+      if (expense.shared) {
+        if (!Array.isArray(expense.job_ids) || expense.job_ids.length === 0) {
+          throw new Error(`Expense #${index + 1}: Shared expense must have at least one job ID`);
+        }
+        
+        if (expense.job_ids.some(id => typeof id !== 'number' || id <= 0)) {
+          throw new Error(`Expense #${index + 1}: Invalid job ID in shared expense`);
+        }
+      }
+    });
+
+    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationError = validateExpenses(expenses);
-    
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    setError(null);
 
     try {
-      // Format expenses for API
-      const formattedExpenses = expenses.map(expense => {
-        const jobIds = expense.shared ? parseJobIds(expense.job_ids) : [];
-        if (expense.shared && jobIds.length === 0) {
-          throw new Error('Invalid job IDs for shared expense');
+      // Basic form validation
+      const validationError = validateExpenses(expenses);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      // Format and validate each expense
+      const formattedExpenses = expenses.map((expense, index) => {
+        try {
+          const formattedExpense = {
+            name: expense.name.trim(),
+            cost: parseFloat(expense.cost),
+            shared: expense.shared
+          };
+
+          if (expense.shared) {
+            const jobIds = parseJobIds(expense.job_ids);
+            if (jobIds.length === 0) {
+              throw new Error('No valid job IDs for shared expense');
+            }
+            formattedExpense.job_ids = jobIds;
+          }
+
+          return formattedExpense;
+        } catch (err) {
+          throw new Error(`Expense #${index + 1}: ${err.message}`);
         }
-        
-        // Ensure job_ids is always an array, even if empty
-        const expensePayload = {
-          name: expense.name,
-          cost: parseFloat(expense.cost),
-          shared: expense.shared
-        };
-        
-        // Only include job_ids if expense is shared
-        if (expense.shared) {
-          expensePayload.job_ids = jobIds;
-        }
-        
-        return expensePayload;
       });
 
-      console.log('Submitting expenses payload:', {
+      // Construct and validate final payload
+      const payload = {
         jobId,
         expenses: formattedExpenses
-      });
+      };
 
-      await dispatch(addJobExpenses({ jobId, expenses: formattedExpenses }));
+      // Validate payload structure
+      validatePayloadStructure(payload);
+
+      // Log the final payload for verification
+      console.log('Submitting expenses payload:', payload);
+
+      // Submit the payload
+      await dispatch(addJobExpenses(payload));
       onClose();
     } catch (err) {
-      setError('Failed to add expenses. Please try again.');
+      setError(err.message || 'Failed to add expenses. Please try again.');
     }
   };
 
