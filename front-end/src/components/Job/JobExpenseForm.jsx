@@ -178,7 +178,7 @@ const JobExpenseForm = ({ jobId, onClose }) => {
       validatePayloadStructure(payload);
 
       // Log the final payload for verification
-      console.log('Submitting expenses payload:', payload);
+      console.log('Submitting expenses payload:', JSON.stringify(payload, null, 2));
 
       // Submit the payload
       await dispatch(addJobExpenses(payload));

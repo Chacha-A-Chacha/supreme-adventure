@@ -6,13 +6,16 @@ import { setupCache } from 'axios-cache-interceptor';
 import { API_BASE_URL } from '../config';
 
 // Create axios instance with default config
-const axiosInstance = setupCache(axios.create({
+const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
-}));
+});
+
+// Apply cache interceptor
+setupCache(axiosInstance);
 
 // Request interceptor
 axiosInstance.interceptors.request.use(
@@ -145,9 +148,14 @@ class JobService {
   }
 
   static async addJobExpenses(jobId, expenses) {
+    const payload = {
+      jobId,
+      expenses
+    };
+    
     const response = await axiosInstance.post(
       this.endpoints.expenses(jobId),
-      expenses,
+      payload,
       { ...retryConfig }
     );
     await this.invalidateJobCache(jobId);
