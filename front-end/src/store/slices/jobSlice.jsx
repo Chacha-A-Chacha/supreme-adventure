@@ -100,7 +100,14 @@ export const createJob = createAsyncThunk(
       const response = await JobService.createJob(jobData);
       return response;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.message || 'Failed to update timeframe',
+        details: {
+          endpoint: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status
+        }
+      });
     }
   }
 );

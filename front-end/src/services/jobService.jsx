@@ -195,8 +195,14 @@ class JobService {
   }
 
   static async invalidateJobCache(jobId) {
-    await axiosInstance.cache.delete(this.endpoints.jobDetails(jobId));
-    await axiosInstance.cache.delete(this.endpoints.jobs);
+    try {
+      if (axiosInstance.cache) {
+        await axiosInstance.cache.delete(this.endpoints.jobDetails(jobId));
+        await axiosInstance.cache.delete(this.endpoints.jobs);
+      }
+    } catch (error) {
+      console.warn('Cache invalidation failed:', error);
+    }
   }
 
   // Batch operations
@@ -232,12 +238,51 @@ class JobService {
     return typeof jobId === 'number' && jobId > 0;
   }
 
+  // Date validation utilities
+  static isValidDate(date) {
+    return date instanceof Date && !isNaN(date);
+  }
+
+  static isFutureDate(date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
+  }
+
+  static validateTimeframeData(data) {
+    if (!data.start_date || !data.end_date) {
+      throw new Error('Both start date and end date are required');
+    }
+
+    const startDate = new Date(data.start_date);
+    const endDate = new Date(data.end_date);
+
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      throw new Error('Invalid date format');
+    }
+
+    if (startDate > endDate) {
+      throw new Error('Start date must be before end date');
+    }
+
+    if (!this.isFutureDate(startDate)) {
+      throw new Error('Start date must be in the future');
+    }
+
+    return true;
+  }
+
   static validateJobData(data) {
     const requiredFields = ['client_name', 'client_phone_number', 'description'];
     const missingFields = requiredFields.filter(field => !data[field]);
     
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    // Validate timeframe if present
+    if (data.start_date || data.end_date) {
+      this.validateTimeframeData(data);
     }
     
     return true;

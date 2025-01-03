@@ -302,7 +302,7 @@ const JobDetailsView = ({ jobId }) => {
               <DialogHeader>
                 <DialogTitle>Update Job Timeline</DialogTitle>
               </DialogHeader>
-              <JobTimeframeForm jobId={jobId} onClose={handleModalClose} />
+              <JobTimeframeForm jobId={jobId} start={job.start_date} end={job.end_date} onClose={handleModalClose} />
             </DialogContent>
           </Dialog>
         </CardHeader>
