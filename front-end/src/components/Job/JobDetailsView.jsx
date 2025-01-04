@@ -129,6 +129,56 @@ const JobDetailsView = ({ jobId }) => {
     });
   };
 
+  // Render Materials section only for in-house jobs
+  const renderMaterialsSection = () => {
+    if (job.job_type !== 'in_house') return null;
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Box className="h-5 w-5" />
+            Materials
+          </CardTitle>
+          <Dialog 
+            open={activeModal === 'materials'} 
+            onOpenChange={(open) => open ? handleModalOpen('materials') : handleModalClose()}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline">Add Materials</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Materials</DialogTitle>
+              </DialogHeader>
+              <JobMaterialsForm jobId={jobId} onClose={handleModalClose} />
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {job.material_usages?.length > 0 ? (
+              job.material_usages.map((material) => (
+                <div key={material.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">{material.material_name}</p>
+                    <p className="text-sm text-gray-500">
+                      Usage: {material.usage_meters} meters
+                    </p>
+                  </div>
+                  <p className="font-medium">{formatCurrency(material.cost)}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center">No materials recorded</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+
     return (
     <div className="p-6 space-y-6">
       {/* Client Information */}
@@ -320,48 +370,8 @@ const JobDetailsView = ({ jobId }) => {
         </CardContent>
       </Card>
 
-      {/* Materials */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Box className="h-5 w-5" />
-            Materials
-          </CardTitle>
-          <Dialog 
-            open={activeModal === 'materials'} 
-            onOpenChange={(open) => open ? handleModalOpen('materials') : handleModalClose()}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline">Add Materials</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Materials</DialogTitle>
-              </DialogHeader>
-              <JobMaterialsForm jobId={jobId} onClose={handleModalClose} />
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {job.materials?.length > 0 ? (
-              job.materials.map((material) => (
-                <div key={material.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{material.name}</p>
-                    <p className="text-sm text-gray-500">
-                      Quantity: {material.quantity} {material.unit}
-                    </p>
-                  </div>
-                  <p className="font-medium">{formatCurrency(material.cost)}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500 text-center">No materials recorded</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Materials Section - Only render for in-house jobs */}
+      {renderMaterialsSection()}
 
       {/* Progress */}
       <Card>
