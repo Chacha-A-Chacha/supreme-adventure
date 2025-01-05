@@ -49,8 +49,8 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
     formMaterials.forEach((mat, index) => {
       if (mat.material_id && mat.usage_meters) {
         const material = materials.find(m => m.id.toString() === mat.material_id);
-        if (material && mat.usage_meters > material.stock_meters) {
-          errors.push(`Material #${index + 1} exceeds available stock (${material.stock_meters}m available)`);
+        if (material && mat.usage_meters > material.stock_level) {
+          errors.push(`Material #${index + 1} exceeds available stock (${material.stock_level}m available)`);
         }
       }
     });
@@ -137,7 +137,7 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
                   >
                     <span>{mat.name}</span>
                     <span className="text-gray-500 ml-2">
-                      ({mat.stock_meters}m in stock)
+                      ({mat.stock_level}m in stock)
                     </span>
                   </SelectItem>
                 ))}
@@ -159,7 +159,7 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
             />
             {material.material_id && (
               <p className="text-sm text-gray-500">
-                Available: {materials.find(m => m.id.toString() === material.material_id)?.stock_meters}m
+                Available: {materials.find(m => m.id.toString() === material.material_id)?.stock_level}m
               </p>
             )}
           </div>

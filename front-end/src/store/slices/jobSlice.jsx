@@ -3,6 +3,7 @@
 
 import { createSlice, createAsyncThunk, createSelector, createEntityAdapter } from '@reduxjs/toolkit';
 import JobService from '../../services/jobService';
+import { validateJobProgress } from '../../utils/jobProgressValidation';
 
 // Constants
 const JOBS_PER_PAGE = 10;
@@ -176,12 +177,41 @@ export const addJobExpenses = createAsyncThunk(
 
 export const updateJobProgress = createAsyncThunk(
   'jobs/updateProgress',
-  async ({ jobId, progressData }, { rejectWithValue }) => {
+  async ({ jobId, progressData }, { rejectWithValue, getState }) => {
     try {
+      // Get current job status for validation
+      const currentJob = selectJobById(getState(), jobId);
+      if (!currentJob) {
+        throw new Error('Job not found');
+      }
+
+      // Validate the progress update
+      const validation = validateJobProgress(progressData, currentJob.progress_status);
+      if (!validation.isValid) {
+        return rejectWithValue({
+          message: 'Invalid progress update',
+          validationErrors: validation.errors
+        });
+      }
+
+      // If status is being changed to completed, add completion timestamp
+      if (progressData.progress_status === 'completed' && !progressData.completed_at) {
+        progressData.completed_at = new Date().toISOString();
+      }
+
       const response = await JobService.updateJobProgress(jobId, progressData);
       return response;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || error.message || 'Failed to update progress',
+        status: error.response?.status,
+        validationErrors: error.response?.data?.validationErrors
+      });
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      return getState().jobs.loadingStates.updateJobProgress !== 'loading';
     }
   }
 );

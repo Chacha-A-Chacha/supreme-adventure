@@ -3,7 +3,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial as deleteMaterialService } from '../../services/materialService';
 
 // Async Thunk to fetch materials
-export const fetchMaterials = createAsyncThunk('materials/fetchMaterials', async (_, { rejectWithValue }) => {
+export const fetchMaterials = createAsyncThunk(
+  'materials/fetchMaterials', 
+  async (_, { rejectWithValue }) => {
   try {
     const response = await getMaterials();
     return response.data;
