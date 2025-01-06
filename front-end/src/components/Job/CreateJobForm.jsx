@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createJob } from '../../store/slices/jobSlice';
@@ -49,11 +49,32 @@ const CreateJobForm = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const validateForm = () => {
+  // Function to format Kenyan phone numbers
+  const formatKenyanPhone = useCallback((phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Handle numbers starting with 0
+    if (cleaned.startsWith('0')) {
+      return '254' + cleaned.substring(1);
+    }
+    
+    // Handle numbers starting with 254
+    if (cleaned.startsWith('254')) {
+      return cleaned;
+    }
+    
+    // Handle numbers starting with 7 or 1 directly
+    if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
+      return '254' + cleaned;
+    }
+    
+    return cleaned;
+  }, []);
+
+  const validateForm = useCallback(() => {
     const newErrors = {};
 
     // Required fields validation
@@ -61,10 +82,14 @@ const CreateJobForm = () => {
       newErrors.client_name = 'Client name is required';
     }
 
+    // Phone number validation with Kenyan format
     if (!formData.client_phone_number.trim()) {
       newErrors.client_phone_number = 'Phone number is required';
-    } else if (!/^\+?[\d\s-]{10,}$/.test(formData.client_phone_number)) {
-      newErrors.client_phone_number = 'Invalid phone number format';
+    } else {
+      const formattedPhone = formatKenyanPhone(formData.client_phone_number);
+      if (!/^254[17]\d{8}$/.test(formattedPhone)) {
+        newErrors.client_phone_number = 'Invalid phone number format. Use format: 07XX XXX XXX or 01XX XXX XXX';
+      }
     }
 
     if (!formData.description.trim()) {
@@ -77,6 +102,8 @@ const CreateJobForm = () => {
 
     if (!formData.timeframe.end) {
       newErrors.end_date = 'End date is required';
+    } else if (new Date(formData.timeframe.end) <= new Date(formData.timeframe.start)) {
+      newErrors.end_date = 'End date must be after start date';
     }
 
     // Validate pricing
@@ -85,29 +112,39 @@ const CreateJobForm = () => {
         if (!formData.vendor_name.trim()) {
           newErrors.vendor_name = 'Vendor name is required';
         }
-        if (!formData.vendor_cost_per_unit || formData.vendor_cost_per_unit <= 0) {
+        if (!formData.vendor_cost_per_unit || Number(formData.vendor_cost_per_unit) <= 0) {
           newErrors.vendor_cost_per_unit = 'Valid vendor cost is required';
         }
-        if (!formData.total_units || formData.total_units <= 0) {
+        if (!formData.total_units || Number(formData.total_units) <= 0) {
           newErrors.total_units = 'Valid total units is required';
         }
-        if (!formData.pricing_per_unit || formData.pricing_per_unit <= 0) {
+        if (!formData.pricing_per_unit || Number(formData.pricing_per_unit) <= 0) {
           newErrors.pricing_per_unit = 'Valid pricing per unit is required';
         }
       }
     } else {
-      if (!formData.pricing_input || formData.pricing_input <= 0) {
+      if (!formData.pricing_input || Number(formData.pricing_input) <= 0) {
         newErrors.pricing_input = 'Base pricing is required';
       }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData, formatKenyanPhone]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    if (name.includes('timeframe.')) {
+    
+    if (name === 'client_phone_number') {
+      const formattedPhone = formatKenyanPhone(value);
+      // Only update if it's a potential valid phone number and within max length
+      if (formattedPhone.length <= 12) {
+        setFormData(prev => ({
+          ...prev,
+          client_phone_number: formattedPhone
+        }));
+      }
+    } else if (name.includes('timeframe.')) {
       const timeframeField = name.split('.')[1];
       setFormData(prev => ({
         ...prev,
@@ -122,36 +159,39 @@ const CreateJobForm = () => {
         [name]: value
       }));
     }
-  };
+  }, [formatKenyanPhone]);
 
-  const handleExpenseChange = (index, field, value) => {
-    const updatedExpenses = [...formData.expenses];
-    updatedExpenses[index] = {
-      ...updatedExpenses[index],
-      [field]: value
-    };
-    setFormData(prev => ({
-      ...prev,
-      expenses: updatedExpenses
-    }));
-  };
+  const handleExpenseChange = useCallback((index, field, value) => {
+    setFormData(prev => {
+      const updatedExpenses = [...prev.expenses];
+      updatedExpenses[index] = {
+        ...updatedExpenses[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        expenses: updatedExpenses
+      };
+    });
+  }, []);
 
-  const addExpense = () => {
+  const addExpense = useCallback(() => {
     setFormData(prev => ({
       ...prev,
       expenses: [...prev.expenses, { name: '', cost: '', shared: false }]
     }));
-  };
+  }, []);
 
-  const removeExpense = (index) => {
+  const removeExpense = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       expenses: prev.expenses.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Submitting job data:', formData); // Log job data after preventing default
     setSubmitError('');
 
     if (!validateForm()) {
@@ -164,9 +204,7 @@ const CreateJobForm = () => {
       const jobData = {
         ...formData,
         expenses: formData.expenses.filter(exp => exp.name && exp.cost),
-        // If using unit pricing, set pricing_input to 0
         pricing_input: formData.use_unit_pricing ? 0 : parseFloat(formData.pricing_input),
-        // If not using unit pricing, clear unit-related fields
         ...((!formData.use_unit_pricing || formData.job_type === 'in_house') && {
           vendor_cost_per_unit: 0,
           total_units: 0,
@@ -174,10 +212,19 @@ const CreateJobForm = () => {
         })
       };
 
-      // Remove the use_unit_pricing field as it's not needed in the API
+      // Remove use_unit_pricing as it's not needed in the API
       delete jobData.use_unit_pricing;
 
-      await dispatch(createJob(jobData)).unwrap();
+      const result = await dispatch(createJob(jobData)).unwrap();
+      console.log('Job created successfully:', result);  
+
+
+      // First reset the form
+      setFormData(initialFormState);
+      setErrors({});
+      setSubmitError('');
+
+      // Navigate to jobs list after successful creation
       navigate('/jobs');
     } catch (error) {
       setSubmitError(error.message || 'Failed to create job');
@@ -191,8 +238,8 @@ const CreateJobForm = () => {
       <CardHeader>
         <CardTitle>Create New Job</CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-6">
           {/* Client Information */}
           <div className="space-y-4">
             <div>
@@ -216,8 +263,12 @@ const CreateJobForm = () => {
                 name="client_phone_number"
                 value={formData.client_phone_number}
                 onChange={handleInputChange}
+                placeholder="07XX XXX XXX or 01XX XXX XXX"
                 className={errors.client_phone_number ? 'border-red-500' : ''}
               />
+              <p className="text-sm text-gray-500 mt-1">
+                Enter number starting with 07 or 01 - will auto-format to 254
+              </p>
               {errors.client_phone_number && (
                 <p className="text-sm text-red-500">{errors.client_phone_number}</p>
               )}
@@ -371,99 +422,101 @@ const CreateJobForm = () => {
                     className={errors.total_units ? 'border-red-500' : ''}
                   />
                   {errors.total_units && (
-                    <p className="text-sm text-red-500">{errors.total_units}</p>
-                  )}
-                </div>
+                  <p className="text-sm text-red-500">{errors.total_units}</p>
+                )}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Timeframe */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="timeframe.start">Start Date</Label>
-              <Input
-                type="date"
-                id="timeframe.start"
-                name="timeframe.start"
-                value={formData.timeframe.start}
-                onChange={handleInputChange}
-                className={errors.start_date ? 'border-red-500' : ''}
-              />
-              {errors.start_date && (
-                <p className="text-sm text-red-500">{errors.start_date}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="timeframe.end">End Date</Label>
-              <Input
-                type="date"
-                id="timeframe.end"
-                name="timeframe.end"
-                value={formData.timeframe.end}
-                onChange={handleInputChange}
-                className={errors.end_date ? 'border-red-500' : ''}
-              />
-              {errors.end_date && (
-                <p className="text-sm text-red-500">{errors.end_date}</p>
-              )}
-            </div>
+        {/* Timeframe */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="timeframe.start">Start Date</Label>
+            <Input
+              type="date"
+              id="timeframe.start"
+              name="timeframe.start"
+              value={formData.timeframe.start}
+              onChange={handleInputChange}
+              className={errors.start_date ? 'border-red-500' : ''}
+            />
+            {errors.start_date && (
+              <p className="text-sm text-red-500">{errors.start_date}</p>
+            )}
           </div>
 
-          {/* Expenses */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Expenses (Optional)</Label>
+          <div>
+            <Label htmlFor="timeframe.end">End Date</Label>
+            <Input
+              type="date"
+              id="timeframe.end"
+              name="timeframe.end"
+              value={formData.timeframe.end}
+              onChange={handleInputChange}
+              className={errors.end_date ? 'border-red-500' : ''}
+            />
+            {errors.end_date && (
+              <p className="text-sm text-red-500">{errors.end_date}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Expenses */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>Expenses (Optional)</Label>
+            <Button
+              type="button"
+              onClick={addExpense}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Expense
+            </Button>
+          </div>
+
+          {formData.expenses.map((expense, index) => (
+            <div key={index} className="flex items-center gap-4">
+              <Input
+                placeholder="Expense name"
+                value={expense.name}
+                onChange={(e) => handleExpenseChange(index, 'name', e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                placeholder="Cost"
+                value={expense.cost}
+                onChange={(e) => handleExpenseChange(index, 'cost', e.target.value)}
+                min="0"
+                step="0.01"
+                className="w-32"
+              />
               <Button
                 type="button"
-                onClick={addExpense}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
+                onClick={() => removeExpense(index)}
+                variant="destructive"
+                size="icon"
+                className="shrink-0"
+                aria-label="Remove expense"
               >
-                <Plus className="w-4 h-4" />
-                Add Expense
+                <Trash className="w-4 h-4" />
               </Button>
             </div>
+          ))}
+        </div>
 
-            {formData.expenses.map((expense, index) => (
-              <div key={index} className="flex items-center gap-4">
-                <Input
-                  placeholder="Expense name"
-                  value={expense.name}
-                  onChange={(e) => handleExpenseChange(index, 'name', e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Cost"
-                  value={expense.cost}
-                  onChange={(e) => handleExpenseChange(index, 'cost', e.target.value)}
-                  min="0"
-                  step="0.01"
-                />
-                <Button
-                  className="px-2"
-                  type="button"
-                  onClick={() => removeExpense(index)}
-                  variant="destructive"
-                  size="icon"
-                >
-                  <Trash className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          {/* Error Message */}
-          {submitError && (
-            <Alert variant="destructive">
-              <AlertCircle className="w-4 h-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{submitError}</AlertDescription>
-            </Alert>
-          )}
-        </form>
+        {/* Error Message */}
+        {submitError && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
 
       <CardFooter className="flex justify-end space-x-4">
@@ -476,14 +529,16 @@ const CreateJobForm = () => {
           Cancel
         </Button>
         <Button
-          onClick={handleSubmit}
+          type="submit"
           disabled={isSubmitting}
+          aria-label={isSubmitting ? 'Creating job...' : 'Create job'}
         >
           {isSubmitting ? 'Creating...' : 'Create Job'}
         </Button>
       </CardFooter>
-    </Card>
-  );
+    </form>
+  </Card>
+);
 };
 
 export default CreateJobForm;

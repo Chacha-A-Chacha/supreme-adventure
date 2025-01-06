@@ -97,18 +97,49 @@ export const createJob = createAsyncThunk(
   'jobs/createJob',
   async (jobData, { rejectWithValue }) => {
     try {
-      JobService.validateJobData(jobData);
+      // Optional: Add validation here if needed
+      if (!jobData) {
+        throw new Error('Job data is required');
+      }
+
+      console.log('Creating job with data:', jobData); // Log job data before API call
       const response = await JobService.createJob(jobData);
+      
+      // Ensure we have a valid response
+      if (!response || !response.id) {
+        throw new Error('Invalid response from server');
+      }
+
       return response;
     } catch (error) {
-      return rejectWithValue({
-        message: error.message || 'Failed to update timeframe',
-        details: {
-          endpoint: error.config?.url,
-          method: error.config?.method,
-          status: error.response?.status
-        }
-      });
+      // Handle different types of errors
+      if (error.response) {
+        // Server responded with an error
+        return rejectWithValue({
+          message: error.response.data?.message || 'Server error occurred',
+          status: error.response.status,
+          details: error.response.data
+        });
+      } else if (error.request) {
+        // Request was made but no response received
+        return rejectWithValue({
+          message: 'No response from server',
+          status: 'NETWORK_ERROR'
+        });
+      } else {
+        // Error in request setup
+        return rejectWithValue({
+          message: error.message || 'Failed to create job',
+          status: 'REQUEST_ERROR'
+        });
+      }
+    }
+  },
+  {
+    // Condition function to prevent duplicate requests
+    condition: (_, { getState }) => {
+      const { jobs } = getState();
+      return jobs.loadingStates.createJob !== 'loading';
     }
   }
 );
@@ -214,7 +245,7 @@ export const updateJobProgress = createAsyncThunk(
       return getState().jobs.loadingStates.updateJobProgress !== 'loading';
     }
   }
-);
+);  
 
 export const updateJobTimeframe = createAsyncThunk(
   'jobs/updateTimeframe',

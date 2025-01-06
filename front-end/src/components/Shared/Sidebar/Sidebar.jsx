@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,11 +29,11 @@ import {
 } from "lucide-react"
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home, current: true },
-  { name: 'Materials', href: '/materials', icon: Folder, current: false },
-  { name: 'Jobs', href: '/jobs', icon: Files, current: false },
-  { name: 'Machine Usage', href: '/machine-usage', icon: Settings, current: false },
-  { name: 'Reports', href: '/reports', icon: PieChart, current: false },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Materials', href: '/materials', icon: Folder },
+  { name: 'Jobs', href: '/jobs', icon: Files },
+  { name: 'Machine Usage', href: '/machine-usage', icon: Settings },
+  { name: 'Reports', href: '/reports', icon: PieChart },
 ]
 
 const userNavigation = [
@@ -43,6 +43,7 @@ const userNavigation = [
 
 export default function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
 
   return (
     <div className="relative min-h-screen">
@@ -64,14 +65,14 @@ export default function Sidebar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    item.current
+                    location.pathname === item.href
                       ? "bg-green-100 text-green-900"
                       : "hover:bg-green-50 text-gray-700 hover:text-green-900"
                   )}
                 >
                   <item.icon className={cn(
                     "h-5 w-5",
-                    item.current ? "text-green-600" : "text-gray-400"
+                    location.pathname === item.href ? "text-green-600" : "text-gray-400"
                   )} />
                   {item.name}
                 </a>
@@ -98,14 +99,14 @@ export default function Sidebar() {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium mb-1 transition-colors",
-                  item.current
+                  location.pathname === item.href
                     ? "bg-green-100 text-green-900"
                     : "hover:bg-green-50 text-gray-700 hover:text-green-900"
                 )}
               >
                 <item.icon className={cn(
                   "h-5 w-5",
-                  item.current ? "text-green-600" : "text-gray-400"
+                  location.pathname === item.href ? "text-green-600" : "text-gray-400"
                 )} />
                 {item.name}
               </a>
