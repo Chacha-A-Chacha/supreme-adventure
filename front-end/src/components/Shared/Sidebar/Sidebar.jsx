@@ -53,8 +53,8 @@ export default function Sidebar() {
           <div className="flex flex-col h-full">
             <div className="p-6">
               <img
-                src="/logo.png"
-                alt="Company Logo"
+                src="/tetnaz_logo.webp"
+                alt="Tetnaz Graphix"
                 className="h-8 w-auto"
               />
             </div>
@@ -87,8 +87,8 @@ export default function Sidebar() {
         <div className="flex flex-col flex-grow border-r border-gray-200 bg-white">
           <div className="flex items-center h-16 px-6">
             <img
-              src="/logo.png"
-              alt="Company Logo"
+              src="/tetnaz_logo.webp"
+              alt="Tetnaz Graphix"
               className="h-8 w-auto"
             />
           </div>
