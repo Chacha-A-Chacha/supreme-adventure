@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Add this for proper Vercel deployment
+  base: './', // Add this for proper Vercel deployment
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: false,
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: undefined,
