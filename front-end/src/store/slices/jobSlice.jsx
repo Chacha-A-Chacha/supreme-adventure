@@ -1,29 +1,33 @@
-// slices/jobSlice.jsx
-// Desc: Redux slice for managing job data
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
+import {
+  getJobs,
+  createJob as createJobService,
+  getJobDetails,
+  updateJob as updateJobService,
+  addJobMaterials as addJobMaterialsService,
+  addJobExpenses as jobExpensesService,
+  updateJobProgress as jobProgressService,
+  updateJobTimeframe as jobTimeframeService,
 
-import { createSlice, createAsyncThunk, createSelector, createEntityAdapter } from '@reduxjs/toolkit';
-import JobService from '../../services/jobService';
-import { validateJobProgress } from '../../utils/jobProgressValidation';
+} from '../../services/jobService';
 
 // Constants
 const JOBS_PER_PAGE = 10;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Create entity adapter for normalized state management
-const jobsAdapter = createEntityAdapter({
-  selectId: (job) => job.id,
-  sortComparer: (a, b) => b.created_at.localeCompare(a.created_at)
-});
+// Helper function to clean filters
+const cleanFilters = (filters) => {
+  return Object.entries(filters).reduce((acc, [key, value]) => {
+    if (value && value !== 'all' && value !== '') {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+};
 
-// Initial state with entity adapter
-const initialState = jobsAdapter.getInitialState({
+// Initial state
+const initialState = {
+  jobs: [],
   currentJob: null,
-  pagination: {
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: JOBS_PER_PAGE
-  },
   loadingStates: {
     fetchJobs: 'idle',
     createJob: 'idle',
@@ -44,18 +48,23 @@ const initialState = jobsAdapter.getInitialState({
     updateJobProgress: null,
     updateJobTimeframe: null
   },
-  lastUpdated: null
-});
-
-
-// Helper function to clean filters
-const cleanFilters = (filters) => {
-  return Object.entries(filters).reduce((acc, [key, value]) => {
-    if (value && value !== 'all' && value !== '') {
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: JOBS_PER_PAGE
+  },
+  filters: {
+    jobType: null,
+    progressStatus: null,
+    startDate: null,
+    endDate: null
+  },
+  notifications: {
+    message: null,
+    type: null,
+    data: null
+  }
 };
 
 // Async Thunks
@@ -64,31 +73,16 @@ export const fetchJobs = createAsyncThunk(
   async ({ page = 1, limit = JOBS_PER_PAGE, ...filters }, { rejectWithValue }) => {
     try {
       const cleanedFilters = cleanFilters(filters);
-      const response = await JobService.getJobs({ page, limit, ...cleanedFilters });
-      
-      return {
-        jobs: response.jobs.map(job => ({
-          ...job,
-          lastFetched: Date.now()
-        })),
-        pagination: {
-          currentPage: page,
-          totalPages: response.totalPages,
-          totalItems: response.totalItems,
-          itemsPerPage: limit
-        }
-      };
+      const response = await getJobs({ 
+        page, 
+        limit, 
+        ...cleanedFilters 
+      });
+      return response.data;
     } catch (error) {
       return rejectWithValue({
-        message: error.response?.data?.message || 'Failed to fetch jobs',
-        status: error.response?.status
+        message: error.response?.data?.message || 'Failed to fetch jobs'
       });
-    }
-  },
-  {
-    condition: (_, { getState }) => {
-      const { jobs } = getState();
-      return jobs.loadingStates.fetchJobs !== 'loading';
     }
   }
 );
@@ -97,68 +91,26 @@ export const createJob = createAsyncThunk(
   'jobs/createJob',
   async (jobData, { rejectWithValue }) => {
     try {
-      // Optional: Add validation here if needed
-      if (!jobData) {
-        throw new Error('Job data is required');
-      }
-
-      console.log('Creating job with data:', jobData); // Log job data before API call
-      const response = await JobService.createJob(jobData);
-      
-      // Ensure we have a valid response
-      if (!response || !response.id) {
-        throw new Error('Invalid response from server');
-      }
-
-      return response;
+      const response = await createJobService(jobData);
+      return response.data;
     } catch (error) {
-      // Handle different types of errors
-      if (error.response) {
-        // Server responded with an error
-        return rejectWithValue({
-          message: error.response.data?.message || 'Server error occurred',
-          status: error.response.status,
-          details: error.response.data
-        });
-      } else if (error.request) {
-        // Request was made but no response received
-        return rejectWithValue({
-          message: 'No response from server',
-          status: 'NETWORK_ERROR'
-        });
-      } else {
-        // Error in request setup
-        return rejectWithValue({
-          message: error.message || 'Failed to create job',
-          status: 'REQUEST_ERROR'
-        });
-      }
-    }
-  },
-  {
-    // Condition function to prevent duplicate requests
-    condition: (_, { getState }) => {
-      const { jobs } = getState();
-      return jobs.loadingStates.createJob !== 'loading';
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to create job'
+      });
     }
   }
 );
 
-// Update Job thunk not used in the project
 export const updateJob = createAsyncThunk(
   'jobs/updateJob',
-  async ({ jobId, data }, { rejectWithValue, getState }) => {
+  async ({ jobId, data }, { rejectWithValue }) => {
     try {
-      // Optimistic update
-      const originalJob = getState().jobs.entities[jobId];
-      if (!originalJob) {
-        throw new Error('Job not found');
-      }
-
-      const response = await JobService.updateJob(jobId, data);
-      return response;
+      const response = await updateJobService(jobId, data);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to update job'
+      });
     }
   }
 );
@@ -167,17 +119,14 @@ export const fetchJobDetails = createAsyncThunk(
   'jobs/fetchJobDetails',
   async (jobId, { rejectWithValue }) => {
     try {
-      const response = await JobService.getJobDetails(jobId);
-      return response;
+      const response = await getJobDetails(jobId);
+      
+      console.log('Job Details Response:', response.data);
+      return response.data;
     } catch (error) {
       return rejectWithValue({
         message: error.response?.data?.message || 'Failed to fetch job details'
       });
-    }
-  },
-  {
-    condition: (_, { getState }) => {
-      return getState().jobs.loadingStates.fetchJobDetails !== 'loading';
     }
   }
 );
@@ -186,10 +135,12 @@ export const addJobMaterials = createAsyncThunk(
   'jobs/addJobMaterials',
   async ({ jobId, materials }, { rejectWithValue }) => {
     try {
-      const response = await JobService.addJobMaterials(jobId, materials);
-      return response;
+      const response = await addJobMaterialsService(jobId, materials);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to add materials'
+      });
     }
   }
 );
@@ -198,63 +149,40 @@ export const addJobExpenses = createAsyncThunk(
   'jobs/addJobExpenses',
   async ({ jobId, expenses }, { rejectWithValue }) => {
     try {
-      const response = await JobService.addJobExpenses(jobId, expenses);
-      return response;
+      const response = await jobExpensesService(jobId, expenses);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to add expenses'
+      });
     }
   }
 );
 
 export const updateJobProgress = createAsyncThunk(
-  'jobs/updateProgress',
-  async ({ jobId, progressData }, { rejectWithValue, getState }) => {
+  'jobs/updateJobProgress',
+  async ({ jobId, progressData }, { rejectWithValue }) => {
     try {
-      // Get current job status for validation
-      const currentJob = selectJobById(getState(), jobId);
-      if (!currentJob) {
-        throw new Error('Job not found');
-      }
-
-      // Validate the progress update
-      const validation = validateJobProgress(progressData, currentJob.progress_status);
-      if (!validation.isValid) {
-        return rejectWithValue({
-          message: 'Invalid progress update',
-          validationErrors: validation.errors
-        });
-      }
-
-      // If status is being changed to completed, add completion timestamp
-      if (progressData.progress_status === 'completed' && !progressData.completed_at) {
-        progressData.completed_at = new Date().toISOString();
-      }
-
-      const response = await JobService.updateJobProgress(jobId, progressData);
-      return response;
+      const response = await jobProgressService(jobId, progressData);
+      return response.data;
     } catch (error) {
       return rejectWithValue({
-        message: error.response?.data?.message || error.message || 'Failed to update progress',
-        status: error.response?.status,
-        validationErrors: error.response?.data?.validationErrors
+        message: error.response?.data?.message || 'Failed to update progress'
       });
     }
-  },
-  {
-    condition: (_, { getState }) => {
-      return getState().jobs.loadingStates.updateJobProgress !== 'loading';
-    }
   }
-);  
+);
 
 export const updateJobTimeframe = createAsyncThunk(
   'jobs/updateTimeframe',
   async ({ jobId, timeframeData }, { rejectWithValue }) => {
     try {
-      const response = await JobService.updateJobTimeframe(jobId, timeframeData);
-      return response;
+      const response = await jobTimeframeService(jobId, timeframeData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error);
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to update timeframe'
+      });
     }
   }
 );
@@ -272,13 +200,26 @@ const jobsSlice = createSlice({
       state.loadingStates.fetchJobDetails = 'idle';
       state.errors.fetchJobDetails = null;
     },
-    invalidateJobsCache: (state) => {
-      state.lastUpdated = null;
+    setFilters: (state, action) => {
+      state.filters = {
+        ...state.filters,
+        ...action.payload
+      };
+      // Reset to first page when filters change
+      state.pagination.currentPage = 1;
+    },
+    clearNotification: (state) => {
+      state.notifications = {
+        message: null,
+        type: null,
+        data: null
+      };
     },
     updateJobLocally: (state, action) => {
       const { jobId, updates } = action.payload;
-      if (state.entities[jobId]) {
-        state.entities[jobId] = { ...state.entities[jobId], ...updates };
+      const jobIndex = state.jobs.findIndex(job => job.id === jobId);
+      if (jobIndex !== -1) {
+        state.jobs[jobIndex] = { ...state.jobs[jobIndex], ...updates };
       }
     }
   },
@@ -291,13 +232,25 @@ const jobsSlice = createSlice({
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.loadingStates.fetchJobs = 'succeeded';
-        state.pagination = action.payload.pagination;
-        state.lastUpdated = Date.now();
-        jobsAdapter.setAll(state, action.payload.jobs);
+        state.jobs = action.payload.jobs;
+        state.pagination = {
+          currentPage: action.payload.pagination.currentPage,
+          totalPages: action.payload.pagination.totalPages,
+          totalItems: action.payload.pagination.totalItems,
+          itemsPerPage: action.payload.pagination.itemsPerPage
+        };
+        state.notifications = {
+          message: 'Jobs fetched successfully',
+          type: 'success'
+        };
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loadingStates.fetchJobs = 'failed';
-        state.errors.fetchJobs = action.payload?.message || 'Failed to fetch jobs';
+        state.errors.fetchJobs = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Create Job
@@ -307,51 +260,44 @@ const jobsSlice = createSlice({
       })
       .addCase(createJob.fulfilled, (state, action) => {
         state.loadingStates.createJob = 'succeeded';
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
+        state.jobs.unshift(action.payload);
+        state.notifications = {
+          message: 'Job created successfully',
+          type: 'success'
         };
-        state.ids.unshift(action.payload.id);
-        state.pagination.totalItems++;
       })
       .addCase(createJob.rejected, (state, action) => {
         state.loadingStates.createJob = 'failed';
-        state.errors.createJob = action.payload?.message || 'Failed to create job';
+        state.errors.createJob = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Update Job
-      .addCase(updateJob.pending, (state, action) => {
+      .addCase(updateJob.pending, (state) => {
         state.loadingStates.updateJob = 'loading';
         state.errors.updateJob = null;
-        
-        // Optimistic update
-        const { jobId, data } = action.meta.arg;
-        if (state.entities[jobId]) {
-          state.entities[jobId] = {
-            ...state.entities[jobId],
-            ...data,
-            isOptimistic: true
-          };
-        }
       })
       .addCase(updateJob.fulfilled, (state, action) => {
         state.loadingStates.updateJob = 'succeeded';
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now(),
-          isOptimistic: false
+        const index = state.jobs.findIndex(job => job.id === action.payload.id);
+        if (index !== -1) {
+          state.jobs[index] = action.payload;
+        }
+        state.notifications = {
+          message: 'Job updated successfully',
+          type: 'success'
         };
       })
       .addCase(updateJob.rejected, (state, action) => {
         state.loadingStates.updateJob = 'failed';
-        state.errors.updateJob = action.payload?.message || 'Failed to update job';
-        
-        // Revert optimistic update
-        const { jobId } = action.meta.arg;
-        if (state.entities[jobId]?.isOptimistic) {
-          const originalJob = action.meta.arg.originalJob;
-          state.entities[jobId] = originalJob;
-        }
+        state.errors.updateJob = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Fetch Job Details
@@ -362,61 +308,107 @@ const jobsSlice = createSlice({
       .addCase(fetchJobDetails.fulfilled, (state, action) => {
         state.loadingStates.fetchJobDetails = 'succeeded';
         state.currentJob = action.payload;
-        jobsAdapter.upsertOne(state, action.payload);
+        state.notifications = {
+          message: 'Job details fetched successfully',
+          type: 'success'
+        };
       })
       .addCase(fetchJobDetails.rejected, (state, action) => {
         state.loadingStates.fetchJobDetails = 'failed';
         state.errors.fetchJobDetails = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Add Job Materials
+      .addCase(addJobMaterials.pending, (state) => {
+        state.loadingStates.addJobMaterials = 'loading';
+        state.errors.addJobMaterials = null;
+      })
       .addCase(addJobMaterials.fulfilled, (state, action) => {
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
+        state.loadingStates.addJobMaterials = 'succeeded';
+        state.notifications = {
+          message: 'Materials added successfully',
+          type: 'success',
+          data: action.payload
         };
       })
       .addCase(addJobMaterials.rejected, (state, action) => {
         state.loadingStates.addJobMaterials = 'failed';
-        state.errors.addJobMaterials = action.payload?.message || 'Failed to add materials';
+        state.errors.addJobMaterials = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Add Job Expenses
+      .addCase(addJobExpenses.pending, (state) => {
+        state.loadingStates.addJobExpenses = 'loading';
+        state.errors.addJobExpenses = null;
+      })
       .addCase(addJobExpenses.fulfilled, (state, action) => {
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
+        state.loadingStates.addJobExpenses = 'succeeded';
+        state.notifications = {
+          message: 'Expenses added successfully',
+          type: 'success',
+          data: action.payload
         };
       })
       .addCase(addJobExpenses.rejected, (state, action) => {
         state.loadingStates.addJobExpenses = 'failed';
-        state.errors.addJobExpenses = action.payload?.message || 'Failed to add expenses';
+        state.errors.addJobExpenses = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Update Job Progress
+      .addCase(updateJobProgress.pending, (state) => {
+        state.loadingStates.updateJobProgress = 'loading';
+        state.errors.updateJobProgress = null;
+      })
       .addCase(updateJobProgress.fulfilled, (state, action) => {
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
+        state.loadingStates.updateJobProgress = 'succeeded';
+        state.notifications = {
+          message: 'Job progress updated successfully',
+          type: 'success',
+          data: action.payload
         };
       })
       .addCase(updateJobProgress.rejected, (state, action) => {
         state.loadingStates.updateJobProgress = 'failed';
-        state.errors.updateJobProgress = action.payload?.message || 'Failed to update progress';
+        state.errors.updateJobProgress = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       })
 
       // Update Job Timeframe
+      .addCase(updateJobTimeframe.pending, (state) => {
+        state.loadingStates.updateJobTimeframe = 'loading';
+        state.errors.updateJobTimeframe = null;
+      })
       .addCase(updateJobTimeframe.fulfilled, (state, action) => {
-        state.entities[action.payload.id] = {
-          ...action.payload,
-          lastFetched: Date.now()
+        state.loadingStates.updateJobTimeframe = 'succeeded';
+        state.notifications = {
+          message: 'Job timeframe updated successfully',
+          type: 'success',
+          data: action.payload
         };
       })
       .addCase(updateJobTimeframe.rejected, (state, action) => {
         state.loadingStates.updateJobTimeframe = 'failed';
-        state.errors.updateJobTimeframe = action.payload?.message || 'Failed to update timeframe';
+        state.errors.updateJobTimeframe = action.payload?.message;
+        state.notifications = {
+          message: action.payload?.message,
+          type: 'error'
+        };
       });
-
   }
 });
 
@@ -424,47 +416,26 @@ const jobsSlice = createSlice({
 export const {
   resetJobErrors,
   clearCurrentJob,
-  invalidateJobsCache,
+  setFilters,
+  clearNotification,
   updateJobLocally
 } = jobsSlice.actions;
 
 // Selectors
-const jobsAdapterSelectors = jobsAdapter.getSelectors((state) => state.jobs);
-
-// Basic selectors
-export const {
-  selectAll: selectAllJobs,
-  selectById: selectJobById,
-  selectIds: selectJobIds,
-  selectTotal: selectTotalJobs,
-  selectEntities: selectJobEntities
-} = jobsAdapterSelectors;
+export const selectJobsState = state => state.jobs;
+export const selectAllJobs = state => state.jobs.jobs;
+export const selectCurrentJob = state => state.jobs.currentJob;
+export const selectJobById = (state, jobId) => 
+  state.jobs.jobs.find(job => job.id === jobId);
+export const selectJobsLoadingState = state => state.jobs.loadingStates;
+export const selectJobsErrors = state => state.jobs.errors;
+export const selectJobsPagination = state => state.jobs.pagination;
+export const selectNotification = state => state.jobs.notifications;
+export const selectJobFilters = state => state.jobs.filters;
 
 // Memoized selectors
-export const selectJobsState = state => state.jobs;
-
-export const selectCurrentJob = createSelector(
-  [selectJobsState],
-  (jobs) => jobs.currentJob
-);
-
-export const selectJobsLoadingState = createSelector(
-  [selectJobsState],
-  (jobs) => jobs.loadingStates
-);
-
-export const selectJobsErrors = createSelector(
-  [selectJobsState],
-  (jobs) => jobs.errors
-);
-
-export const selectJobsPagination = createSelector(
-  [selectJobsState],
-  (jobs) => jobs.pagination
-);
-
 export const selectFilteredJobs = createSelector(
-  [selectAllJobs, (_, filters) => filters],
+  [selectAllJobs, selectJobFilters],
   (jobs, filters) => {
     if (!filters) return jobs;
     
@@ -483,4 +454,5 @@ export const selectFilteredJobs = createSelector(
   }
 );
 
+// Export default reducer
 export default jobsSlice.reducer;

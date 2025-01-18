@@ -1,3 +1,6 @@
+import { JOB_PROGRESS_STATUS } from '../constants/jobProgress';
+import { ALLOWED_STATUS_TRANSITIONS } from '../constants/jobProgress';
+
 export const validateJobProgress = (data, currentStatus) => {
     const errors = {};
   

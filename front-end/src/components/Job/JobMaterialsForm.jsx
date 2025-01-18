@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { addJobMaterials } from '../../store/slices/jobSlice';
@@ -14,26 +15,40 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
   const materials = useSelector((state) => state.materials.materials);
   const materialsStatus = useSelector((state) => state.materials.status);
   const [formMaterials, setFormMaterials] = useState([
-    { material_id: '', usage_meters: '' }
+    { 
+      material_id: '', 
+      quantity_used: '',
+      wastage: '',
+      notes: ''
+    }
   ]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (materialsStatus === 'idle') {
-        console.log("Fetching materials...");
+      console.log("Fetching materials...");
       dispatch(fetchMaterials());
     }
   }, [dispatch, materialsStatus]);
 
   const handleAddMaterial = () => {
-    setFormMaterials([...formMaterials, { material_id: '', usage_meters: '' }]);
+    setFormMaterials([...formMaterials, { 
+      material_id: '', 
+      quantity_used: '',
+      wastage: '',
+      notes: ''
+    }]);
   };
 
   const handleMaterialChange = (index, field, value) => {
     const updatedMaterials = [...formMaterials];
     updatedMaterials[index] = {
       ...updatedMaterials[index],
-      [field]: field === 'material_id' ? value : parseFloat(value) || ''
+      [field]: field === 'material_id' 
+        ? value 
+        : (field === 'quantity_used' || field === 'wastage') 
+          ? parseFloat(value) || ''
+          : value
     };
     setFormMaterials(updatedMaterials);
   };
@@ -47,10 +62,13 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
   const validateMaterials = () => {
     const errors = [];
     formMaterials.forEach((mat, index) => {
-      if (mat.material_id && mat.usage_meters) {
+      if (mat.material_id && mat.quantity_used) {
         const material = materials.find(m => m.id.toString() === mat.material_id);
-        if (material && mat.usage_meters > material.stock_level) {
+        if (material && mat.quantity_used > material.stock_level) {
           errors.push(`Material #${index + 1} exceeds available stock (${material.stock_level}m available)`);
+        }
+        if (mat.wastage && mat.wastage > mat.quantity_used) {
+          errors.push(`Material #${index + 1} wastage cannot exceed quantity used`);
         }
       }
     });
@@ -60,7 +78,7 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validMaterials = formMaterials.filter(
-      m => m.material_id && m.usage_meters
+      m => m.material_id && m.quantity_used
     );
     
     if (validMaterials.length === 0) {
@@ -75,7 +93,16 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
     }
 
     try {
-      await dispatch(addJobMaterials({ jobId, materials: validMaterials })).unwrap();
+      // Clean up the data before submission
+      const materialsToSubmit = validMaterials.map(mat => ({
+        material_id: mat.material_id,
+        job_id: jobId,
+        quantity_used: mat.quantity_used,
+        ...(mat.wastage && { wastage: mat.wastage }),
+        ...(mat.notes && { notes: mat.notes.trim() })
+      }));
+
+      await dispatch(addJobMaterials({ jobId, materials: materialsToSubmit })).unwrap();
       onClose();
     } catch (err) {
       setError('Failed to add materials. Please try again.');
@@ -146,14 +173,14 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`usage-${index}`}>Usage (meters)</Label>
+            <Label htmlFor={`quantity-${index}`}>Quantity Used (meters)</Label>
             <Input
-              id={`usage-${index}`}
+              id={`quantity-${index}`}
               type="number"
               min="0.01"
               step="0.01"
-              value={material.usage_meters}
-              onChange={(e) => handleMaterialChange(index, 'usage_meters', e.target.value)}
+              value={material.quantity_used}
+              onChange={(e) => handleMaterialChange(index, 'quantity_used', e.target.value)}
               required
               className="w-full"
             />
@@ -162,6 +189,31 @@ const JobMaterialsForm = ({ jobId, onClose }) => {
                 Available: {materials.find(m => m.id.toString() === material.material_id)?.stock_level}m
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`wastage-${index}`}>Wastage (meters)</Label>
+            <Input
+              id={`wastage-${index}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={material.wastage}
+              onChange={(e) => handleMaterialChange(index, 'wastage', e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`notes-${index}`}>Notes (optional)</Label>
+            <Textarea
+              id={`notes-${index}`}
+              value={material.notes}
+              onChange={(e) => handleMaterialChange(index, 'notes', e.target.value)}
+              className="w-full"
+              maxLength={225}
+              placeholder="Add any additional notes here..."
+            />
           </div>
         </div>
       ))}

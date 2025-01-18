@@ -1,102 +1,59 @@
-import React, { useEffect, useRef } from 'react';
-import { Chart, CategoryScale } from 'chart.js';
-import 'chart.js/auto';
+import React from 'react';
+import { Badge } from "@/components/ui/badge";
 
-Chart.register(CategoryScale);
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 const MaterialInventoryStatus = ({ materials = [], lowStockThreshold = 20 }) => {
-  const chartRef = useRef(null);
-  const chartInstanceRef = useRef(null);
+  const getStockStatus = (stockLevel, minThreshold) => {
+    const ratio = stockLevel / minThreshold;
+    if (ratio <= 1) return 'bg-red-600';
+    if (ratio <= 1.5) return 'bg-yellow-500';
+    return 'bg-green-600';
+  };
 
-  // Update chart when materials data changes
-  useEffect(() => {
-    if (materials.length > 0) {
-      const ctx = chartRef.current.getContext('2d');
-
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy();
-      }
-
-      chartInstanceRef.current = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: materials.map((material) => material.name),
-          datasets: [
-            {
-              label: 'Stock Levels',
-              data: materials.map((material) => material.stock_level),
-              backgroundColor: 'rgba(54, 162, 235, 0.5)',
-              borderColor: 'rgba(54, 162, 235, 1)',
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              type: 'category',
-            },
-          },
-        },
-      });
-    }
-
-    return () => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy();
-      }
-    };
-  }, [materials]);
-
-  // Identify low stock and top-used materials
-  const lowStockMaterials = materials.filter(
-    (material) => material.stock_level < lowStockThreshold
-  );
-
-  const topUsedMaterials = [...materials]
-    .sort((a, b) => b.usage - a.usage)
-    .slice(0, 5);
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Material Inventory Status</h2>
-
-      {/* Low Stock Alerts */}
-      <div className="mt-4">
-        <h3 className="text-lg font-semibold text-red-600">Low Stock Alerts</h3>
-        <ul className="mt-2 space-y-2">
-          {lowStockMaterials.map((material) => (
-            <li key={material.id} className="text-sm text-red-600">
-              {material.name} - {material.stock_level} units left
-            </li>
-          ))}
-          {lowStockMaterials.length === 0 && (
-            <p className="text-sm text-green-600">All materials are sufficiently stocked.</p>
-          )}
-        </ul>
-      </div>
-
-      {/* Top Used Materials */}
-      <div className="mt-6">
-        <h3 className="text-lg font-semibold text-gray-700">Top Used Materials</h3>
-        <ul className="mt-2 space-y-2">
-          {topUsedMaterials.map((material) => (
-            <li key={material.id} className="text-sm text-gray-700">
-              {material.name} - {material.usage} units used
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Inventory Overview */}
-      <div className="mt-8">
-        <h3 className="text-lg font-semibold text-gray-700">Inventory Overview</h3>
-        <div style={{ height: '300px' }}>
-          <canvas ref={chartRef}></canvas>
-        </div>
-      </div>
+    <div>
+      <h2 className="text-sm font-medium text-muted-foreground">Material Stock Status</h2>
+      <ul role="list" className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {materials.map((material) => (
+          <li key={material.id} className="col-span-1 flex rounded-md shadow-sm">
+            <div
+              className={classNames(
+                getStockStatus(material.stock_level, material.min_threshold),
+                'flex w-16 shrink-0 items-center justify-center rounded-l-md text-sm font-medium text-white'
+              )}
+            >
+              {getInitials(material.name)}
+            </div>
+            <div className="flex flex-1 items-center justify-between truncate rounded-r-md border-b border-r border-t border-gray-200 bg-white">
+              <div className="flex-1 truncate px-4 py-2 text-sm">
+                <p className="font-medium text-gray-900">
+                  {material.name}
+                </p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <p className="text-gray-500">
+                    Stock: {material.stock_level} {material.unit_of_measure}
+                  </p>
+                  <p className="text-gray-500">
+                    Cost: KES {material.cost_per_unit}/{material.unit_of_measure}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

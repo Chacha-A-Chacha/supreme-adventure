@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   fetchJobs, 
-  selectFilteredJobs,
+  selectAllJobs,
   selectJobsPagination, 
-  selectJobsLoadingState 
+  selectJobsLoadingState,
+  selectJobFilters,
+  setFilters
 } from '../../store/slices/jobSlice';
 import { format } from 'date-fns';
 import {
@@ -42,56 +44,58 @@ import { Loader2, MoreHorizontal, Eye, Pencil, Trash } from 'lucide-react';
 
 const JobsList = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Redux selectors
+  const jobs = useSelector(selectAllJobs);
   const pagination = useSelector(selectJobsPagination);
   const loadingState = useSelector(selectJobsLoadingState);
-  
-  const [filters, setFilters] = useState({
-    jobType: 'all',
-    progressStatus: 'all',
-    startDate: '',
-    endDate: ''
-  });
-
-  // Use memoized filtered jobs selector
-  const filteredJobs = useSelector(state => selectFilteredJobs(state, filters));
+  const filters = useSelector(selectJobFilters);
+  const error = useSelector(state => state.jobs.errors.fetchJobs);
 
   useEffect(() => {
-    dispatch(fetchJobs({ page: pagination.currentPage, ...filters }));
-  }, [dispatch, pagination.currentPage, filters]);
+    dispatch(fetchJobs({ 
+      page: pagination.currentPage, 
+      limit: pagination.itemsPerPage,
+      ...filters 
+    }));
+  }, [dispatch, pagination.currentPage, pagination.itemsPerPage, filters]);
 
-  // Memoize handler functions
+  // Handlers
   const handleFilterChange = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+    dispatch(setFilters({ [key]: value }));
+  }, [dispatch]);
+
+  const handleViewJob = useCallback((jobId) => {
+    navigate(`/jobs/${jobId}/job-details`);
+  }, [navigate]);
+
+  const handlePreviousPage = useCallback(() => {
+    dispatch(fetchJobs({ 
+      page: pagination.currentPage - 1,
+      limit: pagination.itemsPerPage,
+      ...filters 
+    }));
+  }, [dispatch, pagination.currentPage, pagination.itemsPerPage, filters]);
+
+  const handleNextPage = useCallback(() => {
+    dispatch(fetchJobs({ 
+      page: pagination.currentPage + 1,
+      limit: pagination.itemsPerPage,
+      ...filters 
+    }));
+  }, [dispatch, pagination.currentPage, pagination.itemsPerPage, filters]);
 
   // Memoize status color mapping
-  const getStatusColor = useMemo(() => {
+  const getStatusColor = useCallback((status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       in_progress: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
     };
-    return (status) => colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-800';
   }, []);
-
-  const navigate = useNavigate();
-
-  const handleViewJob = (jobId) => {
-    navigate(`/jobs/${jobId}/job-details`);
-  };
-
-  // Memoize pagination handlers
-  const handlePreviousPage = useCallback(() => {
-    dispatch(fetchJobs({ page: pagination.currentPage - 1 }));
-  }, [dispatch, pagination.currentPage]);
-
-  const handleNextPage = useCallback(() => {
-    dispatch(fetchJobs({ page: pagination.currentPage + 1 }));
-  }, [dispatch, pagination.currentPage]);
-
-  const jobsError = useSelector(state => state.jobs.errors.fetchJobs);
-  const jobsErrorDetails = useSelector(state => state.jobs.errors.fetchJobsDetails);
 
   return (
     <Card className="w-full">
@@ -99,7 +103,7 @@ const JobsList = () => {
         <CardTitle>Jobs List</CardTitle>
         <div className="flex flex-wrap gap-4 mt-4">
           <Select
-            value={filters.jobType}
+            value={filters.jobType || 'all'}
             onValueChange={(value) => handleFilterChange('jobType', value)}
           >
             <SelectTrigger className="w-[180px]">
@@ -113,7 +117,7 @@ const JobsList = () => {
           </Select>
 
           <Select
-            value={filters.progressStatus}
+            value={filters.progressStatus || 'all'}
             onValueChange={(value) => handleFilterChange('progressStatus', value)}
           >
             <SelectTrigger className="w-[180px]">
@@ -130,13 +134,13 @@ const JobsList = () => {
 
           <Input
             type="date"
-            value={filters.startDate}
+            value={filters.startDate || ''}
             onChange={(e) => handleFilterChange('startDate', e.target.value)}
             className="w-[180px]"
           />
           <Input
             type="date"
-            value={filters.endDate}
+            value={filters.endDate || ''}
             onChange={(e) => handleFilterChange('endDate', e.target.value)}
             className="w-[180px]"
           />
@@ -145,41 +149,28 @@ const JobsList = () => {
 
       <CardContent>
         {loadingState.fetchJobs === 'loading' ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : jobsError ? (
-            <div className="p-4 border border-red-200 rounded-md bg-red-50">
-              <h4 className="text-red-800 font-medium mb-2">Error Loading Jobs</h4>
-              <p className="text-red-600 mb-2">{jobsError}</p>
-              {jobsErrorDetails && (
-                <div className="text-sm text-red-500">
-                  <p>Status: {jobsErrorDetails.status}</p>
-                  <p>Endpoint: {jobsErrorDetails.endpoint}</p>
-                  <p>Method: {jobsErrorDetails.method}</p>
-                  {jobsErrorDetails.params && (
-                    <p>Parameters: {JSON.stringify(jobsErrorDetails.params)}</p>
-                  )}
-                </div>
-              )}
-              <Button 
-                variant="outline" 
-                className="mt-2"
-                onClick={() => {
-                  console.log('Retrying with params:', { 
-                    page: pagination.currentPage,
-                    ...filters 
-                  });
-                  dispatch(fetchJobs({ 
-                    page: pagination.currentPage,
-                    ...filters 
-                  }));
-                }}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : (
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="p-4 border border-red-200 rounded-md bg-red-50">
+            <h4 className="text-red-800 font-medium mb-2">Error Loading Jobs</h4>
+            <p className="text-red-600">{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-2"
+              onClick={() => {
+                dispatch(fetchJobs({ 
+                  page: pagination.currentPage,
+                  limit: pagination.itemsPerPage,
+                  ...filters 
+                }));
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : (
           <>
             <Table>
               <TableHeader>
@@ -194,7 +185,7 @@ const JobsList = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredJobs.map((job) => (
+                {jobs.map((job) => (
                   <TableRow key={job.id}>
                     <TableCell>{job.id}</TableCell>
                     <TableCell>{job.client_name}</TableCell>
@@ -209,7 +200,7 @@ const JobsList = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(job.created_at), 'MM dd, yyyy')}
+                      {job.created_at ? format(new Date(job.created_at), 'MMM dd, yyyy') : 'N/A'}
                     </TableCell>
                     <TableCell>{job.payment_status}</TableCell>
                     <TableCell>
@@ -240,7 +231,6 @@ const JobsList = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
-                              // Handle delete action
                               if (window.confirm('Are you sure you want to delete this job?')) {
                                 // Add delete functionality
                               }
@@ -260,7 +250,7 @@ const JobsList = () => {
 
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-500">
-                Showing {filteredJobs.length} of {pagination.totalItems} jobs
+                Showing {jobs.length} of {pagination.totalItems} jobs
               </div>
               <div className="flex gap-2">
                 <Button
@@ -280,12 +270,6 @@ const JobsList = () => {
               </div>
             </div>
           </>
-        )}
-
-        {jobsError && (
-          <div className="text-red-500 p-4">
-            Error loading jobs: {jobsError}
-          </div>
         )}
       </CardContent>
     </Card>

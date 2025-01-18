@@ -55,7 +55,7 @@ export default function Sidebar() {
               <img
                 src="/tetnaz_logo.webp"
                 alt="Tetnaz Graphix"
-                className="h-8 w-auto"
+                className="h-12 w-auto"
               />
             </div>
             <nav className="flex-1 px-4">
@@ -83,13 +83,13 @@ export default function Sidebar() {
       </Sheet>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+      <div className="mt-8 hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex flex-col flex-grow border-r border-gray-200 bg-white">
           <div className="flex items-center h-16 px-6">
             <img
               src="/tetnaz_logo.webp"
               alt="Tetnaz Graphix"
-              className="h-8 w-auto"
+              className="h-16 w-auto"
             />
           </div>
           <nav className="flex-1 px-4 pb-4">

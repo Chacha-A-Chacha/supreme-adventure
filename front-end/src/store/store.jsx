@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import materialReducer from './slices/materialSlice';
 import jobReducer from './slices/jobSlice';
+import machineReducer from './slices/machineSlice';
 
 const store = configureStore({
   reducer: {
     materials: materialReducer,
     jobs: jobReducer,
+    machines: machineReducer
     // ... other reducers if any
   },
   middleware: (getDefaultMiddleware) =>

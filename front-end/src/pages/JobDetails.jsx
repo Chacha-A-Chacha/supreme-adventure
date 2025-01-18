@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectJobById, selectJobsLoadingState, clearCurrentJob, fetchJobDetails } from '../store/slices/jobSlice';
 import Header from '../components/Shared/Header/Header';
+import ToastNotification from '../components/Notifications/ToastNotification';
 import JobDetailsView from '../components/Job/JobDetailsView';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ const JobDetailsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastNotification />
+      
       {/* Header Section */}
       <Header
         title={`Job Details #${jobId}`}

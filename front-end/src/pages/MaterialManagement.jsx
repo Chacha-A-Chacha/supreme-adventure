@@ -5,21 +5,52 @@ import MaterialInventoryStatus from '../components/Material/MaterialInventorySta
 import MaterialDetailsList from '../components/Material/MaterialDetailsList';
 import LowStockAlerts from '../components/Material/LowStockAlerts';
 import CreateMaterialForm from '../components/Material/CreateMaterialForm';
-import { fetchMaterials, addMaterial, deleteMaterial } from '../store/slices/materialSlice';
 import UpdateMaterialForm from '../components/Material/UpdateMaterialForm';
+import RestockMaterialForm from '../components/Material/RestockMaterialForm';
+import { 
+  fetchMaterials, 
+  addMaterial, 
+  deleteMaterial, 
+  editMaterial,
+  restockMaterial 
+} from '../store/slices/materialSlice';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const MaterialsManagement = () => {
   const dispatch = useDispatch();
   const { materials, status, error } = useSelector((state) => state.materials);
+  
+  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMaterials());
   }, [dispatch]);
- 
+
+  // Create handlers
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
@@ -28,6 +59,7 @@ const MaterialsManagement = () => {
     setIsModalOpen(false);
   };
 
+  // Update handlers
   const handleOpenUpdateModal = (material) => {
     setSelectedMaterial(material);
     setIsUpdateModalOpen(true);
@@ -39,10 +71,11 @@ const MaterialsManagement = () => {
   };
 
   const handleUpdateMaterial = (updatedMaterial) => {
-    dispatch(updateMaterial({ id: selectedMaterial.id, updatedData: updatedMaterial }));
+    dispatch(editMaterial({ id: selectedMaterial.id, updatedData: updatedMaterial }));
     handleCloseUpdateModal();
   };
 
+  // Delete handlers
   const handleOpenDeleteModal = (material) => {
     setSelectedMaterial(material);
     setIsDeleteModalOpen(true);
@@ -58,11 +91,42 @@ const MaterialsManagement = () => {
     handleCloseDeleteModal();
   };
 
+  // Restock handlers
+  const handleOpenRestockModal = (material) => {
+    setSelectedMaterial(material);
+    setIsRestockModalOpen(true);
+  };
+
+  const handleCloseRestockModal = () => {
+    setIsRestockModalOpen(false);
+    setSelectedMaterial(null);
+  };
+
+  const handleRestockMaterial = (restockData) => {
+    dispatch(restockMaterial({
+      id: selectedMaterial.id,
+      restockData: {
+        ...restockData,
+        material_id: selectedMaterial.id
+      }
+    }))
+    .unwrap()
+    .then(() => {
+      handleCloseRestockModal();
+    })
+    .catch((error) => {
+      console.error('Failed to restock:', error);
+    });
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <Header
         title="Materials Management"
-        breadcrumbs={[{ label: 'Home', href: '/', current: false }, { label: 'Materials', href: '#', current: true }]}
+        breadcrumbs={[
+          { label: 'Home', href: '/', current: false },
+          { label: 'Materials', href: '#', current: true }
+        ]}
         actions={[{
           label: 'Add Material',
           primary: true,
@@ -70,94 +134,147 @@ const MaterialsManagement = () => {
         }]}
       />
 
-      {status === 'loading' && <div>Loading materials...</div>}
-      {status === 'failed' && <div className="text-red-600">Error: {error}</div>}
+      {status === 'loading' && (
+        <div className="flex justify-center p-8">
+          <div className="text-gray-600">Loading materials...</div>
+        </div>
+      )}
+
+      {status === 'failed' && (
+        <Alert variant="destructive" className="mt-6">
+          <AlertDescription>Error: {error}</AlertDescription>
+        </Alert>
+      )}
 
       {status === 'succeeded' && (
-        <>
-          {/* Material Inventory Status */}
-          <div className="mt-6">
-            <MaterialInventoryStatus materials={materials} lowStockThreshold={15} />
-          </div>
+        <div className="mt-6">
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="inventory">Inventory</TabsTrigger>
+            </TabsList>
 
-          {/* Low Stock Alerts */}
-          <div className="mt-10">
-            <LowStockAlerts materials={materials} lowStockThreshold={15} />
-          </div>
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Inventory Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MaterialInventoryStatus materials={materials} lowStockThreshold={15} />
+                  </CardContent>
+                </Card>
 
-          {/* Material Details List with Update/Delete Buttons */}
-          <div className="mt-10">
-            <MaterialDetailsList 
-              materials={materials} 
-              onUpdate={handleOpenUpdateModal} 
-              onDelete={handleOpenDeleteModal} 
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Low Stock Alerts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LowStockAlerts materials={materials} lowStockThreshold={15} />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="inventory">
+              <Card>
+                <CardContent className="pt-6">
+                  <MaterialDetailsList 
+                    materials={materials}
+                    loadingState={status}
+                    error={error}
+                    onUpdate={handleOpenUpdateModal}
+                    onDelete={handleOpenDeleteModal}
+                    onRestock={handleOpenRestockModal}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+
+      {/* Create Material Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-3xl h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
+            <DialogTitle>Create New Material</DialogTitle>
+            <DialogDescription>
+              Add a new material to your inventory. Fill in the details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-4">
+            <CreateMaterialForm 
+              onSubmit={handleAddMaterial} 
+              onCancel={handleCloseModal}
             />
           </div>
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Modal for Adding Material */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-          <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between border-b pb-4">
-              <h3 className="text-lg font-medium text-gray-900">Create New Material</h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <span className="sr-only">Close</span>
-                &times;
-              </button>
-            </div>
-            <div className="mt-4">
-              <CreateMaterialForm onSubmit={handleAddMaterial} />
-            </div>
+      {/* Restock Material Modal */}
+      <Dialog open={isRestockModalOpen} onOpenChange={setIsRestockModalOpen}>
+        <DialogContent className="max-w-3xl h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
+            <DialogTitle>Restock Material</DialogTitle>
+            <DialogDescription>
+              Restock {selectedMaterial?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-4">
+            {selectedMaterial && (
+              <RestockMaterialForm
+                material={selectedMaterial} 
+                onSubmit={handleRestockMaterial}
+                onCancel={handleCloseRestockModal}
+              />
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Modal for Updating Material */}
-      {isUpdateModalOpen && selectedMaterial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-          <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between border-b pb-4">
-              <h3 className="text-lg font-medium text-gray-900">Update Material</h3>
-              <button
-                onClick={handleCloseUpdateModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <span className="sr-only">Close</span>
-                &times;
-              </button>
-            </div>
-            <div className="mt-4">
-              <UpdateMaterialForm material={selectedMaterial} onSubmit={handleUpdateMaterial} />
-            </div>
+      {/* Update Material Modal */}
+      <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
+        <DialogContent className="max-w-3xl h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
+            <DialogTitle>Update Material</DialogTitle>
+            <DialogDescription>
+              Update the details for {selectedMaterial?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-4">
+            {selectedMaterial && (
+              <UpdateMaterialForm 
+                material={selectedMaterial} 
+                onSubmit={handleUpdateMaterial}
+                onCancel={handleCloseUpdateModal}
+              />
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Modal for Delete Confirmation */}
-      {isDeleteModalOpen && selectedMaterial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-medium text-gray-900">Delete Material</h3>
-            <p className="mt-4 text-sm text-gray-600">
-              Are you sure you want to delete <strong>{selectedMaterial.name}</strong>? This action cannot be undone.
-            </p>
-            <div className="mt-6 flex justify-end gap-4">
-              <button onClick={handleCloseDeleteModal} className="text-gray-700">Cancel</button>
-              <button
-                onClick={handleDeleteMaterial}
-                className="rounded-md bg-red-600 px-3 py-2 text-white hover:bg-red-500"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Material</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-medium">{selectedMaterial?.name}</span>? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCloseDeleteModal}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteMaterial}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

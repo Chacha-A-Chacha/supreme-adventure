@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Sidebar from './components/Shared/Sidebar/Sidebar';
 import ErrorBoundary from './components/Shared/ErrorBoundary';
+import ToastNotification from './components/Notifications/ToastNotification';
 import Dashboard from './pages/Dashboard';
 import MaterialManagement from './pages/MaterialManagement';
 import MachineUsage from './pages/MachineUsage';
@@ -9,12 +10,14 @@ import Reports from './pages/Reports';
 import CreateJob from './pages/CreateJob';
 import JobDetails from './pages/JobDetails';
 
-
 const App = () => (
   <Router>
-    <div className="flex">
-      <div className="flex-1">
-        <ErrorBoundary>
+    <ErrorBoundary>
+      <div className="flex">
+        {/* Toast notifications will be rendered on top of everything */}
+        <ToastNotification />
+        
+        <div className="flex-1">
           <Routes>
             <Route path="/" element={<Sidebar />}>
               <Route index element={<Dashboard />} />
@@ -27,9 +30,9 @@ const App = () => (
               <Route path="create-job" element={<CreateJob />} />
             </Route>
           </Routes>
-        </ErrorBoundary>
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   </Router>
 );
 
