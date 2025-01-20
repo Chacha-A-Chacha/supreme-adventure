@@ -155,7 +155,7 @@ const MaterialsManagement = () => {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1">
                 <Card>
                   <CardHeader>
                     <CardTitle>Inventory Status</CardTitle>
